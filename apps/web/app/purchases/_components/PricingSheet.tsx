@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Sheet, TouchButton } from "@/components/ui";
 import { api } from "@/lib/api";
-import { errorText, formatQuantity, money, preciseMoney } from "@/lib/format";
+import { errorText, formatQuantity, money, percent, preciseMoney } from "@/lib/format";
 import { grossMarginPercent, suggestedSalePrice, validTargetMargin, type RoundingPolicy } from "@/lib/pricing";
 import { cx } from "@/lib/cx";
 import { lineTotal, type DraftLine } from "./types";
@@ -70,12 +70,12 @@ export function PricingSheet({ line, policy, onClose, onChange, notify }: Props)
             <label className="ui-field"><span>Costo unitario nuevo</span>
               <input type="number" min="0" step="0.01" value={line.purchase_cost} onChange={event => onChange(line.id, { purchase_cost: Number(event.target.value) })} />
             </label>
-            <Metric label="Variación del costo" value={variation === null ? "Sin costo anterior" : `${variation >= 0 ? "+" : ""}${variation.toFixed(1)}%`} tone={variation !== null && variation > 0 ? "warning" : undefined} />
+            <Metric label="Variación del costo" value={variation === null ? "Sin costo anterior" : percent(variation, 1, true)} tone={variation !== null && variation > 0 ? "warning" : undefined} />
           </section>
           <section className="purchase-pricing">
             <h3>Venta y margen</h3>
             <Metric label="Precio de venta actual" value={money.format(salePrice)} />
-            <Metric label="Margen actual (nuevo costo)" value={currentMargin === null ? "No calculable" : `${currentMargin.toFixed(1)}%`} tone={currentMargin !== null && currentMargin <= 0 ? "danger" : currentMargin !== null && marginValid && currentMargin < marginValue ? "warning" : undefined} />
+            <Metric label="Margen actual (nuevo costo)" value={currentMargin === null ? "No calculable" : percent(currentMargin, 1)} tone={currentMargin !== null && currentMargin <= 0 ? "danger" : currentMargin !== null && marginValid && currentMargin < marginValue ? "warning" : undefined} />
             <label className="ui-field">
               <span>Margen objetivo (%)</span>
               <input className={!marginValid ? "ui-field--invalid" : ""} type="number" inputMode="decimal" step="any" value={marginInput} aria-invalid={!marginValid} onChange={event => setMarginInput(event.target.value)} onBlur={commitMargin} />
@@ -87,7 +87,7 @@ export function PricingSheet({ line, policy, onClose, onChange, notify }: Props)
           </section>
         </div>
         <div className="purchase-warning-row">
-          {variation !== null && variation > 0 && <span>El costo aumentó {variation.toFixed(1)}%</span>}
+          {variation !== null && variation > 0 && <span>El costo aumentó {percent(variation, 1)}</span>}
           {currentMargin !== null && marginValid && currentMargin < marginValue && <span>Margen actual por debajo del objetivo</span>}
           {line.purchase_cost >= salePrice && <strong>El precio de venta actual no cubre adecuadamente el costo</strong>}
         </div>

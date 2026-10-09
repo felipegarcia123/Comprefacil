@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { StatusBadge } from "@/components/ui";
-import { dateFull, money, time } from "@/lib/format";
+import { dateFull, money, percent, time } from "@/lib/format";
 import type { DailyReportData } from "@/lib/types";
 import { CategoryToggleChart, ChannelChart, TicketsChart, TopProductsChart } from "@/components/report-charts";
 import { Kpi, MetricToggle, ReportCard, Row, hourLabel } from "./pieces";
@@ -35,7 +35,7 @@ export function JornadaReport({ report }: { report: ReportLike }) {
       <div className="reports-secondary">
         <div><small>Efectivo</small><b className="ui-num">{money.format(Number(report.cash_total))}</b></div>
         <div><small>Electrónico</small><b className="ui-num">{money.format(Number(report.electronic_total))}</b></div>
-        <div><small>Margen bruto</small><b className="ui-num">{report.gross_margin}%</b></div>
+        <div><small>Margen bruto</small><b className="ui-num">{percent(report.gross_margin, 2)}</b></div>
         {report.report_data.exchanges && report.report_data.exchanges.exchange_count > 0 && <>
           <div><small>Cambios de producto</small><b className="ui-num">{report.report_data.exchanges.exchange_count}</b></div>
           <div><small>Diferencias cobradas en cambios</small><b className="ui-num">{money.format(Number(report.report_data.exchanges.difference_collected))}</b></div>

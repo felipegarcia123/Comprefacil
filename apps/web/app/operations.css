@@ -21,16 +21,16 @@
 .operations-groups__row--flat { display: grid; grid-template-columns: minmax(120px,1fr) 100px 100px 100px; gap: var(--sp-2); align-items: center; padding: var(--sp-3); color: var(--color-ink-muted); }
 .operations-groups__row--flat span, .operations-groups__row--flat b { text-align: right; }
 .operations-groups__detail { padding: var(--sp-1) var(--sp-3) var(--sp-3) calc(var(--sp-3) + var(--sp-4)); background: var(--color-paper); display: flex; flex-direction: column; gap: 4px; }
-.operations-groups__detail small { display: block; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+.operations-groups__detail small { display: block; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; margin-bottom: 2px; }
 .operations-groups__detail span { display: flex; justify-content: space-between; padding: 4px 0; color: var(--color-ink); }
 .operations-groups__extra { border-top: 2px solid var(--color-line); margin-top: 2px; }
-.operations-groups__extra > small { display: block; padding: var(--sp-2) var(--sp-3) 2px; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; text-transform: uppercase; }
-.operations-groups__totals { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--sp-4); padding: var(--sp-3); background: var(--mod-tint); }
-.operations-groups__total-item { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); text-transform: uppercase; }
+.operations-groups__extra > small { display: block; padding: var(--sp-2) var(--sp-3) 2px; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; }
+.operations-groups__totals { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--sp-4); padding: var(--sp-3); background: var(--color-paper); border-top: 2px solid var(--color-line); }   /* neutral: a sales total is not an alert (Fase 6 rule) */
+.operations-groups__total-item { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); }
 /* Section 4 (Fase 6): Efectivo/Electrónico/Total vendido son cifras neutras/positivas, no alertas
    — el rojo de Caja se reserva para salidas de dinero (ver también cash.css). */
 .operations-groups__total-item b { font-size: var(--text-subtitle); color: var(--color-ink); text-transform: none; margin-top: 2px; }
-.operations-groups__grand-total { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); text-transform: uppercase; }
+.operations-groups__grand-total { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); }
 .operations-groups__grand-total strong { font-family: var(--font-display); font-size: var(--text-title); color: var(--color-ink); margin-top: 2px; }
 
 .operations-panel { display: flex; flex-direction: column; gap: var(--sp-1); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); padding: var(--sp-3); }

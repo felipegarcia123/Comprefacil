@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { PenLine, ShieldAlert } from "lucide-react";
 import { InlineMessage, Sheet, StatusBadge, TouchButton } from "@/components/ui";
 import { api } from "@/lib/api";
-import { dateMedium, dateTime, errorText, money } from "@/lib/format";
+import { dateMedium, dateTime, errorText, money, percent } from "@/lib/format";
 import type { InventoryValuation, PatrimonyDeclaration } from "@/lib/types";
 
 const count = new Intl.NumberFormat("es-CO");
-const percent = (value: string | number) => `${Number(value) > 0 ? "+" : ""}${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value))}%`;
 const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k-${Date.now()}-${Math.random()}`);
 
 export function variationText(data: { variation_amount?: string | number | null; variation_percent?: string | number | null }): string | null {
   if (data.variation_amount == null) return null;
   const amount = Number(data.variation_amount);
-  return `${amount > 0 ? "+" : amount < 0 ? "−" : ""}${money.format(Math.abs(amount))}${data.variation_percent != null ? ` (${percent(data.variation_percent)})` : ""}`;
+  return `${amount > 0 ? "+" : amount < 0 ? "−" : ""}${money.format(Math.abs(amount))}${data.variation_percent != null ? ` (${percent(data.variation_percent, 2, true)})` : ""}`;
 }
 
 /**

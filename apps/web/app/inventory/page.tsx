@@ -183,7 +183,10 @@ export default function InventoryPage() {
                 onEdit={() => setFormTarget(detail)} onAdjust={() => setAdjustTarget(detail)}
                 onPricing={() => setPricingTarget(detail)} onToggleActive={() => void toggleActive()} />
             ) : (
-              <div className="sale-status" style={{ minHeight: "auto", padding: "var(--sp-6)" }}>Selecciona un producto para ver su detalle.</div>
+              <div className="ui-panel-empty">
+                <span className="ui-panel-empty__icon"><Package size={40} aria-hidden="true" /></span>
+                <p>Toca un producto de la tabla para ver su stock, precios y movimientos, o escanea su código.</p>
+              </div>
             )}
           </section>
         )}

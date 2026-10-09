@@ -11,7 +11,8 @@ import { formatMoney as money } from "@/lib/format";
  * only Informes, teal). No chart was added "por decoración" — this file exports exactly the same
  * set of charts reports/page.tsx and the ex-dashboard tab both already relied on.
  */
-const AXIS_TICK = { fontFamily: "var(--font-sans)", fontSize: 12, fill: "var(--color-ink-muted)" };
+// Axis labels follow the 14 px text floor of the design system (they were 12 px).
+const AXIS_TICK = { fontFamily: "var(--font-sans)", fontSize: 14, fill: "var(--color-ink-muted)" };
 const GRID_COLOR = "var(--color-line)";
 const TOOLTIP_STYLE = { background: "var(--color-surface)", border: "1px solid var(--color-line)", borderRadius: "var(--radius-input)", boxShadow: "var(--shadow-panel)", fontFamily: "var(--font-sans)", fontSize: 13 };
 const TOOLTIP_LABEL_STYLE = { color: "var(--color-ink)", fontWeight: 700, marginBottom: 4 };

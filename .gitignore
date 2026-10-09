@@ -22,3 +22,6 @@ database/products/*.csv
 .codex/
 test-results/
 playwright-report/
+
+# UI audit evidence (screenshots, local report) — kept out of version control
+ui-audit/

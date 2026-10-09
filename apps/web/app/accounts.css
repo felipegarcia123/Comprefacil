@@ -81,3 +81,8 @@
 .patrimony__coverage svg { display: inline; }
 .patrimony__declared div:first-child dd { font-family: var(--font-display); font-size: var(--text-figure, var(--text-subtitle)); }
 .patrimony__declared dd { text-align: right; }
+/* Section header: title + chevron on the first line, its status ("Falta la báscula", "Opcional…") on a second line
+   under the title, instead of squeezing the title into two lines. */
+.close-block > summary { flex-wrap: wrap; row-gap: 0; }
+.close-block > summary::after { order: 2; }
+.close-block__hint { order: 3; flex-basis: 100%; margin-left: calc(28px + var(--sp-2)); }

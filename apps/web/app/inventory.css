@@ -13,6 +13,9 @@
  */
 .inventory-scan { display: flex; flex-direction: column; gap: var(--sp-3); flex: none; }
 .inventory-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+/* Selects shrink before wrapping: at 1366 the stock chips and the three filters fit one row (more table rows at 680 px). */
+.inventory-filters .inventory-select { flex: 1 1 150px; min-width: 0; max-width: 260px; }
+.inventory-filters .inventory-select:last-child { flex: 0 0 auto; }   /* "Activos": short options, give the width to the others */
 .inventory-select {
   min-height: var(--size-touch); padding: 0 var(--sp-3); border: 2px solid var(--color-line-strong);
   border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink);
@@ -22,15 +25,18 @@
 
 /* Sortable column headers: the whole header cell is one big touch target */
 .inventory-sort-btn {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 2px;
+  display: inline-flex; align-items: center; justify-content: inherit; gap: 4px; min-height: var(--size-touch); min-width: var(--size-touch); padding: 4px 2px;
   border: 0; background: transparent; color: inherit; font: inherit; font-weight: 800;
   letter-spacing: inherit; cursor: pointer; touch-action: manipulation;
 }
 .inventory-sort-btn[aria-pressed="true"] { color: var(--mod-deep, var(--color-ink)); }
 .inventory-cart, .count-cart { flex: 1; min-height: 0; }
-.inventory-cart .ui-th { padding-top: 2px; padding-bottom: 2px; }
-/* Stacked mobile row: let the wrapped product name push the row taller instead of clipping the barcode under it. */
-.inventory-cart .sale-name { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.inventory-cart .ui-th { padding-top: 0; padding-bottom: 0; }
+/* Product name over its barcode, left-aligned like every text column (was right-aligned at every width). */
+.inventory-cart .sale-name { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.inventory-cart .sale-name small { font-weight: 400; }
+/* Stacked mobile row only: the name sits opposite its label, so it aligns right and wraps taller instead of clipping. */
+@media (max-width: 639px) { .inventory-cart .sale-name { align-items: flex-end; text-align: right; } }
 
 /* Product detail (inline panel ≥1200 or Sheet below that) */
 .inventory-detail { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); }
@@ -59,8 +65,8 @@
 @media (min-width: 900px) { .count-steps { margin: 0 var(--gutter); } }
 .count-steps__item { display: inline-flex; align-items: center; gap: 6px; }
 .count-steps__num {
-  display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
-  border: 2px solid var(--color-line-strong); font-size: 11px;
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--color-line-strong); font-size: var(--text-micro);
 }
 .count-steps__item--active { color: var(--mod-deep, var(--color-ink)); }
 .count-steps__item--active .count-steps__num { border-color: var(--mod-deep, var(--color-ink)); }

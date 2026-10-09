@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Sheet, TouchButton } from "@/components/ui";
 import { api } from "@/lib/api";
-import { errorText, money, preciseMoney } from "@/lib/format";
+import { errorText, money, percent, preciseMoney } from "@/lib/format";
 import { grossMarginPercent, suggestedSalePrice, type RoundingPolicy } from "@/lib/pricing";
 import type { InventoryDetail } from "@/lib/types";
 
@@ -48,7 +48,7 @@ export function ProductPricingSheet({ product, policy, onClose, onApplied }: Pro
         <p className="purchase-detail-code">{product.name}</p>
         <div className="purchase-metric"><span>Costo actual</span><b className="ui-num">{money.format(cost)}</b></div>
         <div className="purchase-metric"><span>Precio de venta actual</span><b className="ui-num">{money.format(salePrice)}</b></div>
-        <div className="purchase-metric"><span>Margen actual</span><b className="ui-num">{currentMargin === null ? "No calculable" : `${currentMargin.toFixed(1)}%`}</b></div>
+        <div className="purchase-metric"><span>Margen actual</span><b className="ui-num">{currentMargin === null ? "No calculable" : percent(currentMargin, 1)}</b></div>
 
         <p className="inventory-form-section">Objetivo de margen</p>
         <div className="ui-row">

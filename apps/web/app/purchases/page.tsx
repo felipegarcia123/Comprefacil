@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { History, Landmark, LoaderCircle, Plus } from "lucide-react";
+import { History, LoaderCircle, PackageOpen, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { dateTime, errorText, money } from "@/lib/format";
 import { publishPurchaseContext } from "@/lib/workContexts";
@@ -290,7 +290,7 @@ export default function PurchasesPage() {
       {!purchase ? (
         <div className="sale-status">
           <div className="sale-closed" data-module="compras">
-            <Landmark size={48} aria-hidden="true" />
+            <PackageOpen size={48} aria-hidden="true" />
             <h1>Empieza una compra</h1>
             <p>Elige el proveedor que te está entregando mercancía para empezar a registrar productos.</p>
             <TouchButton module="compras" size="xl" onClick={() => setSupplierPickerOpen(true)}>Elegir proveedor</TouchButton>

@@ -72,7 +72,10 @@ export default function SuppliersPage() {
 
         <section className="sale__panel" aria-label="Detalle del proveedor">
           {detail ? <SupplierDetailPanel detail={detail} onEdit={() => setEditing(detail)} onToggle={() => void toggleActive()} /> : (
-            <div className="sale-status" style={{ minHeight: "auto", padding: "var(--sp-6)" }}>Selecciona un proveedor para ver su información.</div>
+            <div className="ui-panel-empty">
+              <span className="ui-panel-empty__icon"><Handshake size={40} aria-hidden="true" /></span>
+              <p>Toca un proveedor para ver sus datos de contacto y sus compras recibidas.</p>
+            </div>
           )}
         </section>
       </div>

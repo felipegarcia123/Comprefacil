@@ -66,12 +66,15 @@ export function SplitPaymentSheet({ total, scaleTotal = 0, channels, accounts, b
   }
 
   return (
-    <Sheet open title="Dividir pago" persistent onClose={close} module="ventas">
+    <Sheet open title="Dividir pago" persistent wide onClose={close} module="ventas">
       <div className="split">
         <div className="split__totals">
           <Display size="small" label={scaleTotal ? "Total POS" : "Total de la venta"} value={money.format(total)} caption={scaleTotal ? `+ ${money.format(scaleTotal)} granel en báscula (efectivo aparte)` : undefined} />
           <Display size="small" tone="amber" label={pending >= 0 ? "Pendiente" : "Excede"} value={money.format(Math.abs(pending))} tickKey={pending} live />
         </div>
+        {/* >=900: channels + their account/card choices on the left, keypad on the right, Confirmar always in view. */}
+        <div className="split__body">
+        <div className="split__col">
         <ul className="split__rows" aria-label="Monto por canal">
           {channels.map(channel => {
             const kind = KIND[channel.payment_type] ?? KIND.CASH;
@@ -87,9 +90,6 @@ export function SplitPaymentSheet({ total, scaleTotal = 0, channels, accounts, b
             );
           })}
         </ul>
-        <TouchButton variant="secondary" block disabled={pending <= 0 || !active} onClick={() => setAmounts(current => ({ ...current, [active]: String(Number(current[active] || 0) + pending) }))}>
-          Poner el restante en {channels.find(channel => channel.id === active)?.name ?? "el canal activo"}
-        </TouchButton>
         {activeChannel?.payment_type === "CARD" && (
           <div className="ui-choice" role="radiogroup" aria-label={`Tipo de tarjeta en ${activeChannel.name}`}>
             {(["DEBIT", "CREDIT"] as const).map(value => (
@@ -107,7 +107,14 @@ export function SplitPaymentSheet({ total, scaleTotal = 0, channels, accounts, b
         )}
         {!cardsReady && paid === total && <p className="pay__cta-hint" role="status">Indica si la tarjeta del datáfono es Débito o Crédito</p>}
         {cardsReady && !accountsReady && paid === total && <p className="pay__cta-hint" role="status">Elige a qué cuenta llegó cada pago electrónico</p>}
+        </div>
+        <div className="split__col">
+        <TouchButton variant="secondary" block disabled={pending <= 0 || !active} onClick={() => setAmounts(current => ({ ...current, [active]: String(Number(current[active] || 0) + pending) }))}>
+          Poner el restante en {channels.find(channel => channel.id === active)?.name ?? "el canal activo"}
+        </TouchButton>
         <NumberPad value={amounts[active] ?? ""} onChange={value => setAmounts(current => ({ ...current, [active]: value }))} module="ventas" />
+        </div>
+        </div>
         {mixedFiscal && <InlineMessage tone="warning">Esta combinación de pagos requerirá revisión antes de emitir la factura electrónica.</InlineMessage>}
         <div className="split__actions">
           <TouchButton variant="secondary" size="lg" onClick={close} disabled={busy}>Volver</TouchButton>

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Banknote, Check, Columns2, PenLine, Search, Smartphone, UserRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Banknote, Check, Columns2, CreditCard, Landmark, Search, Smartphone, UserRound } from "lucide-react";
 import { Display, InlineMessage, NumberPad, PaymentButton, Sheet, TouchButton } from "@/components/ui";
 import { AccountPicker } from "@/components/accounts/AccountPicker";
 import { FINAL_CONSUMER_ID, formatIdentification } from "@/components/customers/identification";
@@ -54,7 +54,6 @@ type Props = {
   hasItems: boolean;
   onCharge: () => void;
   onSplit: () => void;
-  onManual: () => void;
   /** Comida a granel marked "Pago electrónico" with the cash channel chosen: COBRAR disabled. */
   granelInCash?: boolean;
   /** Comida a granel in the cart and how it was settled ("Báscula / efectivo" never becomes POS money). */
@@ -76,7 +75,7 @@ type Props = {
 export function PaymentPanel(props: Props) {
   const { total, itemCount, unitCount, mode, onMode, hasCashChannel, electronicChannels, channelId, onChannel, cardType, onCardType, accounts, accountId, onAccount, received, onReceived,
     invoiceEnabled, electronicInvoice, onElectronicInvoice, recipient, onPickCustomer, customerBusy,
-    cajaOpen, busy, canCharge, hasItems, onCharge, onSplit, onManual, granelInCash, variant,
+    cajaOpen, busy, canCharge, hasItems, onCharge, onSplit, granelInCash, variant,
     granelTotal = 0, granelSettlement = "EXTERNAL_SCALE", onGranelSettlement, posTotal = total, scaleOnly } = props;
   const hasGranel = granelTotal > 0;
   const scale = hasGranel && granelSettlement === "EXTERNAL_SCALE";
@@ -90,6 +89,13 @@ export function PaymentPanel(props: Props) {
   const missingCardType = isCard && !cardType;
   const selectedChannel = !cash ? electronicChannels.find(channel => channel.id === channelId) : undefined;
   const missingAccount = Boolean(selectedChannel?.requires_destination_account) && !accountId;
+  const missingReceived = cash && hasItems && receivedNumber < total;
+  const selectedAccount = accounts.find(account => account.id === accountId);
+  // On the 1366x680 kiosk the account keys can sit below the fold: bring them into view when a channel is picked.
+  const accountRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedChannel?.requires_destination_account) accountRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedChannel?.id, selectedChannel?.requires_destination_account]);
 
   return (
     <div className={`pay pay--${variant}`} data-module="ventas">
@@ -112,9 +118,16 @@ export function PaymentPanel(props: Props) {
             {scale && !cash && !scaleOnly && <small className="pay__granel-note">Por transferencia: <b className="ui-num">{money.format(posTotal)}</b>. La comida a granel se paga aparte en efectivo.</small>}
           </section>
         )}
-        <div className="pay__modes" role="radiogroup" aria-label="Forma de pago">
-          <ModeKey icon={Banknote} label="Efectivo" selected={cash} disabled={!hasCashChannel} onSelect={() => onMode("cash")} />
-          <ModeKey icon={Smartphone} label="Transferencia" hint="Pago electrónico" selected={!cash} disabled={!electronicChannels.length} onSelect={() => onMode("electronic")} />
+        {/* Efectivo / Transferencia are the choice; "Dividir" (several methods) opens its own sheet, so it sits
+            beside the radiogroup, never inside it, and is always in view instead of at the bottom of the scroll. */}
+        <div className="pay__methods">
+          <div className="pay__modes" role="radiogroup" aria-label="Forma de pago">
+            <ModeKey icon={Banknote} label="Efectivo" selected={cash} disabled={!hasCashChannel} onSelect={() => onMode("cash")} />
+            <ModeKey icon={Smartphone} label="Transferencia" selected={!cash} disabled={!electronicChannels.length} onSelect={() => onMode("electronic")} />
+          </div>
+          <button type="button" className="pay__split" onClick={onSplit} disabled={busy || !hasItems} aria-label="Pago dividido: el cliente pagó de varias formas">
+            <Columns2 size={22} aria-hidden="true" /><span>Dividir</span>
+          </button>
         </div>
 
         {cash ? (
@@ -138,7 +151,8 @@ export function PaymentPanel(props: Props) {
           </div>
         ) : (
           <fieldset className="pay__electronic">
-            <legend>{missingChannel ? "Elige el canal exacto" : "Canal"}</legend>
+            {/* The keys name themselves: the legend is only visible while it is an instruction. */}
+            <legend className={cx(!missingChannel && "ui-sr-only")}>{missingChannel ? "Elige el canal exacto" : "Canal"}</legend>
             <div className="pay__channels" role="group" aria-label="Canal electrónico">
               {electronicChannels.map(item => (
                 <PaymentButton key={item.id} name={item.name} kind={item.payment_type} selected={item.id === channelId} onSelect={() => onChannel(item.id)} />
@@ -155,16 +169,12 @@ export function PaymentPanel(props: Props) {
               </div>
             )}
             {selectedChannel?.requires_destination_account && accounts.length > 0 && (
-              <AccountPicker accounts={accounts} value={accountId} onChange={onAccount} disabled={busy} missing={missingAccount && hasItems} />
+              <div ref={accountRef}>
+                <AccountPicker accounts={accounts} value={accountId} onChange={onAccount} disabled={busy} missing={missingAccount && hasItems} />
+              </div>
             )}
           </fieldset>
         )}
-
-        <div className="pay__more">
-          <span className="pay__more-q">¿Pagó de varias formas?</span>
-          <TouchButton variant="ghost" icon={Columns2} onClick={onSplit} disabled={busy || !hasItems}>Pago dividido</TouchButton>
-          <TouchButton variant="ghost" icon={PenLine} onClick={onManual} disabled={busy || !cajaOpen}>Producto manual</TouchButton>
-        </div>
       </div>
 
       <div className="pay__cta">
@@ -188,13 +198,38 @@ export function PaymentPanel(props: Props) {
             )}
           </div>
         )}
-        {missingChannel && hasItems && <p className="pay__cta-hint" role="status"><Smartphone size={18} aria-hidden="true" />Elige el canal de la transferencia</p>}
-        {missingCardType && hasItems && <p className="pay__cta-hint" role="status"><Smartphone size={18} aria-hidden="true" />Elige si la tarjeta es Débito o Crédito</p>}
-        {!missingChannel && missingAccount && hasItems && <p className="pay__cta-hint" role="status"><Smartphone size={18} aria-hidden="true" />Elige a qué cuenta llegó el dinero</p>}
-        {granelInCash && hasItems && <p className="pay__cta-hint" role="status"><Smartphone size={18} aria-hidden="true" />Granel con pago electrónico: cóbralo por transferencia (o Pago dividido)</p>}
-        {scaleOnly && <p className="pay__cta-hint" role="status"><Banknote size={18} aria-hidden="true" />Solo hay comida a granel de báscula: no hay nada que cobrar en el POS</p>}
+        {/* Why COBRAR is still disabled: ONE line, the first pending step (same conditions as before, one at a time). */}
+        {(() => {
+          const hint: [typeof Banknote, string] | null =
+            scaleOnly ? [Banknote, "Solo hay comida a granel de báscula: no hay nada que cobrar en el POS"]
+            : !hasItems ? null
+            : granelInCash ? [Smartphone, "Granel con pago electrónico: cóbralo por transferencia (o Pago dividido)"]
+            : missingChannel ? [Smartphone, "Elige el canal de la transferencia"]
+            : missingCardType ? [CreditCard, "Elige si la tarjeta es Débito o Crédito"]
+            : missingAccount ? [Landmark, "Elige a qué cuenta llegó el dinero"]
+            : missingReceived ? [Banknote, "Indica cuánto entregó el cliente"]
+            : null;
+          if (!hint) return null;
+          const [HintIcon, text] = hint;
+          return <p className="pay__cta-hint" role="status"><HintIcon size={18} aria-hidden="true" />{text}</p>;
+        })()}
         <TouchButton size="cta" block loading={busy} disabled={!canCharge} onClick={onCharge} className="pay__charge">
-          {busy ? "Cobrando…" : <>COBRAR <span className="ui-num">{money.format(scale && !cash ? posTotal : total)}</span></>}
+          {busy ? "Cobrando…" : (
+            <span className="pay__charge-text">
+              <span>COBRAR <span className="ui-num">{money.format(scale && !cash ? posTotal : total)}</span></span>
+              {/* What this key records, on the key itself: channel + destination account (0028) or cash change. */}
+              {selectedChannel && hasItems && (
+                <span className="pay__charge-sub">
+                  {selectedChannel.payment_type === "CARD" ? <CreditCard size={18} aria-hidden="true" /> : <Smartphone size={18} aria-hidden="true" />}
+                  {selectedChannel.name}{isCard && cardType ? ` ${cardType === "DEBIT" ? "débito" : "crédito"}` : ""}
+                  {selectedChannel.requires_destination_account && selectedAccount && <><Landmark size={18} aria-hidden="true" />llega a {selectedAccount.name}</>}
+                </span>
+              )}
+              {cash && hasItems && receivedNumber >= total && (
+                <span className="pay__charge-sub"><Banknote size={18} aria-hidden="true" />Efectivo, cambio <span className="ui-num">{money.format(change)}</span></span>
+              )}
+            </span>
+          )}
         </TouchButton>
       </div>
 

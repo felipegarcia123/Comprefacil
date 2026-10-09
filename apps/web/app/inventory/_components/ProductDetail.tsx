@@ -1,6 +1,6 @@
 import { Pencil, SlidersHorizontal, Sparkles } from "lucide-react";
 import { StatusBadge, TouchButton } from "@/components/ui";
-import { formatQuantity, money, signed, time as timeFormat } from "@/lib/format";
+import { formatQuantity, money, percent, signed, time as timeFormat } from "@/lib/format";
 import type { InventoryDetail } from "@/lib/types";
 import { stockTone } from "./ProductTable";
 
@@ -43,7 +43,7 @@ export function ProductDetail({ product, onEdit, onAdjust, onPricing, onToggleAc
       <div className="purchase-metric"><span>Costo de referencia</span><b className="ui-num">{money.format(Number(product.unit_cost))}</b></div>
       <div className="purchase-metric"><span>Último costo real</span><b className="ui-num">{product.last_purchase_cost === null ? "Sin compras" : money.format(Number(product.last_purchase_cost))}</b></div>
       <div className="purchase-metric"><span>Precio de venta</span><b className="ui-num">{money.format(Number(product.sale_price))}</b></div>
-      <div className="purchase-metric purchase-metric--accent"><span>Margen actual</span><b className="ui-num">{margin === null ? "No calculable" : `${margin.toFixed(1)}%`}</b></div>
+      <div className="purchase-metric purchase-metric--accent"><span>Margen actual</span><b className="ui-num">{margin === null ? "No calculable" : percent(margin, 1)}</b></div>
 
       <div className="inventory-detail__actions">
         <TouchButton variant="secondary" icon={Pencil} onClick={onEdit}>Editar</TouchButton>

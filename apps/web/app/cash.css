@@ -10,6 +10,7 @@
 
 .cash-metric--neutral { --mod-deep: var(--color-ink); --mod-tint: var(--color-paper); }
 .cash-metric--out .ui-metric-card__label, .cash-metric--out .ui-metric-card__value { color: var(--color-danger); }
+.cash-metric--zero .ui-metric-card__value { color: var(--color-ink-muted); }
 
 .cash-columns { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
 @media (min-width: 900px) { .cash-columns { grid-template-columns: 1fr 1fr; } }
@@ -45,7 +46,8 @@
 .cash-confirm-line { display: flex; align-items: center; gap: var(--sp-2); }
 
 @media (max-width: 639px) { .cash-reason-buttons { grid-template-columns: 1fr; } }
-.cash-invoicing-mode { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* Inline link, 48 px tall touch area (padding, no visual change to the line of text). */
+.cash-invoicing-mode { display: inline-flex; align-items: center; min-height: var(--size-touch); color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 /* DETALLE DE VENTA (post-venta 0027): history first, actions at the bottom, every figure tabular. */
 .sale-detail { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-4); overflow-y: auto; overscroll-behavior: contain; font-family: var(--font-sans); }

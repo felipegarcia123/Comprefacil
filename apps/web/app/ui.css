@@ -5,6 +5,8 @@
  */
 
 .ui-num { font-variant-numeric: tabular-nums; }
+/* Text floor: a bare <small> defaults to "smaller" (80% → 11-12 px here). Zero specificity, so explicit rules still win. */
+:where(small) { font-size: var(--text-micro); }
 .ui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ---------- Toldo: stripe band whose pattern identifies the module without relying on color ---------- */
@@ -234,6 +236,8 @@
 /* ---------- NumberPad ---------- */
 .ui-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
 .ui-pad__key { width: 100%; font-size: 26px; font-family: var(--font-display); }
+/* The erase key is icon-only: `.ui-btn--icon.ui-btn--xl` fixes it at 64 px; in the pad it spans its column like the digits. */
+.ui-pad .ui-pad__key.ui-btn--icon { width: 100%; }
 
 /* ---------- QtyStepper ---------- */
 .ui-qty { display: inline-flex; align-items: center; gap: var(--sp-1); }
@@ -254,13 +258,16 @@
 .ui-form { display: flex; flex-direction: column; gap: var(--sp-3); }
 .ui-field { display: flex; flex-direction: column; gap: var(--sp-1); font-family: var(--font-sans); }
 .ui-field > span { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
-.ui-field input, .ui-field textarea { width: 100%; min-height: var(--size-touch-lg); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); }
+.ui-field input, .ui-field textarea, .ui-field select { width: 100%; min-height: var(--size-touch-lg); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); }
 .ui-field textarea { resize: vertical; min-height: 84px; }
 .ui-field input::placeholder, .ui-field textarea::placeholder { color: var(--color-ink-muted); }
-.ui-field input:focus-visible, .ui-field textarea:focus-visible { outline: 3px solid var(--mod-deep, var(--color-info)); outline-offset: 1px; }
+.ui-field input:focus-visible, .ui-field textarea:focus-visible, .ui-field select:focus-visible { outline: 3px solid var(--mod-deep, var(--color-info)); outline-offset: 1px; }
 .ui-form__channels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
 .ui-form__actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
 .ui-form__actions .ui-btn { flex: 1; }
+/* Inside a sheet the action row is pinned to the bottom of the scrolling body: "Cerrar caja", "Guardar"… are never
+   below the fold of a 680 px screen. Sticky stays inside its own form, so several forms in one sheet never stack. */
+.ui-sheet__body .ui-form__actions { position: sticky; bottom: calc(-1 * var(--sp-6)); z-index: 2; margin: 0 calc(-1 * var(--sp-4)) calc(-1 * var(--sp-6)); padding: var(--sp-3) var(--sp-4) var(--sp-6); background: var(--color-surface); border-top: 2px solid var(--color-line); }
 .ui-choice { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 .ui-choice__item { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: var(--size-touch-lg); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; }
 .ui-choice__item small { font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); }
@@ -286,3 +293,8 @@
 /* ---------- Signed-quantity utility (shared by Compras/Inventario/Conteo) ---------- */
 .pos { color: var(--color-success); }
 .neg { color: var(--color-danger); }
+
+/* ---------- Side-panel empty state (detail panels ≥1200: Inventario, Proveedores): an invitation, never a lone line ---------- */
+.ui-panel-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); padding: var(--sp-6); text-align: center; color: var(--color-ink-muted); }
+.ui-panel-empty p { margin: 0; max-width: 30ch; font-size: var(--text-body); }
+.ui-panel-empty__icon { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--mod-tint, var(--color-paper)); color: var(--mod-deep, var(--color-ink)); }

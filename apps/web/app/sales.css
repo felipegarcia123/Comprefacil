@@ -34,7 +34,7 @@
 .sale-col-price { width: 120px; }
 .sale-col-total { width: 130px; }
 .sale-col-del { width: 64px; text-align: right; }
-.sale-tick { animation: sale-flash 600ms var(--ease); }
+.sale-tick { animation: sale-flash 240ms var(--ease); }   /* feedback when a line is added: ≤250 ms in checkout flows */
 @keyframes sale-flash { from { background: var(--mod-tint); } to { background: transparent; } }
 .sale-del { --_fg: var(--color-danger); }
 .sale-del:active:not(:disabled) { background: var(--color-danger-tint); }
@@ -46,7 +46,7 @@
 .sale-empty__icon { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--mod-tint); color: var(--mod-deep); }
 
 .sale-foot { flex: none; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2); }
-.sale-client { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 32px; font-weight: 700; color: var(--color-ink-muted); }
+.sale-client { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 32px; margin-right: auto; font-weight: 700; color: var(--color-ink-muted); }
 .sale-notice { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
 .sale-change { font-family: var(--font-display); font-size: var(--text-figure); line-height: 1; color: var(--color-success); }
 
@@ -67,21 +67,36 @@
 .pay__top { flex: none; padding: var(--sp-3) var(--sp-3) 0; }
 .pay__scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3); }
 .pay__channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
-/* Compact key: icon over name, so six channels take two rows */
-.pay__channels .ui-pay { flex-direction: column; gap: 2px; min-height: var(--size-touch-lg); padding: var(--sp-1) 4px; font-size: 15px; line-height: 1.1; text-align: center; }
+/* Compact key: icon over name, so six channels take two 48 px rows (the account keys must fit below them at 680 px) */
+.pay__channels .ui-pay { flex-direction: column; gap: 2px; min-height: var(--size-touch); padding: 4px; font-size: 15px; line-height: 1.1; text-align: center; }
+.pay__channels .ui-pay svg { width: 20px; height: 20px; }
 .pay__channels .ui-pay__check { position: absolute; top: 4px; right: 4px; }
 .pay__readouts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 .pay__quick { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
 .pay__quick .ui-btn { flex: 1 1 auto; padding: 0 var(--sp-2); font-size: 16px; }
-/* First decision: two large keys (Efectivo / Transferencia). Selection = check + border + tint, never color alone. */
+/* First decision: two large keys (Efectivo / Transferencia) + "Dividir" beside them (opens the split sheet).
+   Selection = check + border + tint, never color alone. */
+.pay { container: pay / inline-size; }
+.pay__methods { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: var(--sp-2); }
 .pay__modes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
-.pay__mode { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: var(--size-key); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-bottom-width: 4px; border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform var(--t-press) var(--ease); }
+.pay__split { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 60px; padding: var(--sp-1); border: 2px dashed var(--color-line-strong); border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: 16px; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform var(--t-press) var(--ease); }
+.pay__split:active:not(:disabled) { transform: translateY(2px); background: var(--mod-tint); }
+.pay__split:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (hover: hover) { .pay__split:hover:not(:disabled) { background: var(--color-paper); } }
+/* Narrow payment column (laptop 900-1279: 340-360 px): "Transferencia" needs the width, Dividir drops to its own row.
+   Declared after the base .pay__split rule on purpose (same specificity: source order decides). */
+@container pay (max-width: 369px) {
+  .pay__methods { grid-template-columns: 1fr; }
+  .pay__split { flex-direction: row; gap: var(--sp-2); min-height: var(--size-touch); }
+}
+.pay__mode { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 60px; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-bottom-width: 4px; border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); font-weight: 700; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform var(--t-press) var(--ease); }
 .pay__mode:active { transform: translateY(2px); }
 .pay__mode:disabled { opacity: 0.5; cursor: not-allowed; }
 .pay__mode--on { border-color: var(--mod-deep); background: var(--mod-tint); color: var(--mod-deep); box-shadow: inset 0 0 0 1px var(--mod-deep); }
 .pay__mode-label { min-width: 0; display: flex; flex-direction: column; align-items: center; line-height: 1.15; text-align: center; }
 .pay__mode-label small { font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); }
 .pay__mode-check { position: absolute; top: 6px; right: 6px; }
+.pay__mode > svg:first-child { width: 24px; height: 24px; }
 @media (hover: hover) { .pay__mode:hover:not(.pay__mode--on):not(:disabled) { background: var(--color-paper); } }
 .pay__electronic { margin: 0; padding: 0; border: 0; min-width: 0; }
 .pay__electronic legend { padding: 0; margin-bottom: var(--sp-2); font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
@@ -103,16 +118,33 @@
 .pay__customer-name svg { flex: none; }
 .pay__customer-name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
-/* Secondary actions: split payment must not compete with Efectivo / Transferencia / COBRAR. */
-.pay__more { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-2); padding-top: var(--sp-2); border-top: 2px solid var(--color-line); }
-/* Short screens (1366x680 kiosk): slimmer TOTAL frame (same fluid figure) so method + cash stay in view. */
+/* Docked TOTAL: label and item count share the first line, the figure keeps its full fluid size below. */
+.pay--dock .pay__top .ui-display { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: var(--sp-2); }
+.pay--dock .pay__top .ui-display__label { grid-row: 1; grid-column: 1; }
+.pay--dock .pay__top .ui-display__caption { grid-row: 1; grid-column: 2; }
+.pay--dock .pay__top .ui-display__value { grid-row: 2; grid-column: 1 / -1; }
+/* Short screens (1366x680 kiosk): slimmer frames (same fluid figure) so method + cash/account stay in view. */
 @media (min-width: 900px) and (max-height: 760px) {
-  .pay--dock .pay__top .ui-display { padding: var(--sp-2) var(--sp-3); gap: 2px; }
+  .pay--dock .pay__top .ui-display { padding: var(--sp-2) var(--sp-3); row-gap: 2px; }
   .pay--dock .pay__scroll { gap: var(--sp-2); padding-top: var(--sp-2); }
   .pay--dock .pay__cta { padding-top: var(--sp-2); padding-bottom: var(--sp-3); }
+  .pay--dock .pay__electronic legend { margin-bottom: var(--sp-1); }
+  .pay--dock .account-picker { margin-top: var(--sp-1); }
 }
-.pay__more-q { flex: 1 0 100%; font-size: var(--text-micro); color: var(--color-ink-muted); }
-.pay__more .ui-btn { padding: 0 var(--sp-2); gap: 6px; font-size: 16px; white-space: nowrap; }
+/* COBRAR states what it records: a second line (channel + destination account, or cash change), icon + text. */
+.pay__charge-text { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; line-height: 1.05; }
+.pay__charge-text > span:first-child { white-space: nowrap; }
+.pay .pay__charge { padding: 0 var(--sp-3); }
+.pay__charge-sub { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow: hidden; font-family: var(--font-sans); font-size: 16px; font-weight: 700; letter-spacing: 0; white-space: nowrap; text-overflow: ellipsis; opacity: 0.92; }
+.pay__charge-sub svg { flex: none; }
+.pay__charge-sub svg + svg, .pay__charge-sub svg:not(:first-child) { margin-left: var(--sp-2); }
+@media (min-width: 900px) and (max-height: 760px) {
+  /* Kiosk height: TOTAL keeps being the largest figure on screen, a step smaller so every payment key fits. */
+  .pay--dock .pay__top .ui-display__value { font-size: clamp(40px, 3.4vw + 8px, 56px); }
+  .pay--dock .pay__invoice { margin-bottom: var(--sp-2); padding-top: 0; padding-bottom: 0; }
+  .sale__tabs { padding-top: var(--sp-1); }
+  .sale__tabs .ui-tabs { padding-bottom: var(--sp-1); }
+}
 .pay__cta-hint { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-2); font-size: var(--text-micro); font-weight: 700; color: var(--color-warning); }
 .pay__charge .ui-num { margin-left: var(--sp-2); }
 .pay__cta { flex: none; padding: var(--sp-3) var(--sp-3) var(--sp-4); border-top: 2px solid var(--color-line); }
@@ -135,6 +167,15 @@
 .split__row--active { border-color: var(--mod-deep); background: var(--mod-tint); box-shadow: inset 0 0 0 1px var(--mod-deep); }
 .split__name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 700; line-height: 1.15; }
 .split__name small { font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+.split__body { display: grid; gap: var(--sp-3); }
+.split__col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+/* Wide sheet (>=900): two columns so the keypad and "Confirmar pago" fit a 680 px tall screen. */
+@media (min-width: 900px) {
+  .split__body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .split__body .split__rows { grid-template-columns: 1fr; gap: 6px; }
+  .split__body .split__row { min-height: var(--size-touch); }
+  .split__col { gap: var(--sp-2); }
+}
 .split__actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
 .split__actions .ui-btn { flex: 1; }
 
@@ -154,7 +195,7 @@
 /* Below 1200px the side panel eats the width: drop the unit-price column so product names keep a readable width */
 @media (min-width: 640px) and (max-width: 1199px) { .sale-col-qty { width: 176px; } .sale-col-total { width: 116px; } .sale-col-price { display: none; } }
 .pay__card-type { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-top: var(--sp-2); }
-.pay__card-type .ui-choice__item { align-items: center; min-height: var(--size-touch-lg); }
+.pay__card-type .ui-choice__item { align-items: center; min-height: var(--size-touch); }
 /* "Factura electrónica" ON: the fiscal recipient (Consumidor final by default) under the checkbox. */
 .pay__invoice--on { flex-wrap: wrap; }
 .pay__recipient { flex-basis: 100%; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding-left: calc(32px + var(--sp-3)); }

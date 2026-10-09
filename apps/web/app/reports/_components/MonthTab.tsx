@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { InlineMessage } from "@/components/ui";
-import { dateMedium as dateShort, errorText, money } from "@/lib/format";
+import { dateMedium as dateShort, errorText, money, percent } from "@/lib/format";
 import type { MonthlyReport } from "@/lib/types";
 import { CategoryToggleChart, ChannelChart, SalesTrend, TopProductsChart } from "@/components/report-charts";
 import { Kpi, MetricToggle, ReportCard } from "./pieces";
@@ -45,7 +45,7 @@ export function MonthTab() {
           <div className="reports-secondary">
             <div><small>Efectivo</small><b className="ui-num">{money.format(Number(report.cash_total))}</b></div>
             <div><small>Electrónico</small><b className="ui-num">{money.format(Number(report.electronic_total))}</b></div>
-            <div><small>Margen bruto</small><b className="ui-num">{report.gross_margin}%</b></div>
+            <div><small>Margen bruto</small><b className="ui-num">{percent(report.gross_margin, 2)}</b></div>
             <div><small>Jornadas</small><b className="ui-num">{report.days}</b></div>
           </div>
           <ReportCard title="Ventas por día"><SalesTrend data={days} /></ReportCard>

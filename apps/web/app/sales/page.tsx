@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Ban, FileText, Landmark, LoaderCircle, Plus, User } from "lucide-react";
+import { Ban, FileText, Landmark, LoaderCircle, PenLine, Plus, User } from "lucide-react";
 import { api } from "@/lib/api";
 import { MockHardwareService } from "@/lib/hardware";
 import { errorText, money } from "@/lib/format";
@@ -343,7 +343,7 @@ export default function SalesPage() {
       recipient={recipient} onPickCustomer={() => setPickerOpen(true)} customerBusy={customerBusy}
       cajaOpen={cajaOpen} busy={busy} canCharge={canCharge} hasItems={itemCount > 0} granelInCash={granelInCash}
       granelTotal={granelTotal} granelSettlement={granelSettlement} onGranelSettlement={value => void changeGranelSettlement(value)} posTotal={posTotal} scaleOnly={scaleOnly}
-      onCharge={() => void charge()} onSplit={() => setSplitOpen(true)} onManual={() => setManualOpen(true)}
+      onCharge={() => void charge()} onSplit={() => setSplitOpen(true)}
     />
   );
 
@@ -382,6 +382,8 @@ export default function SalesPage() {
             {itemCount ? <CartTable items={active!.items} selectedId={selectedId} onSelect={setSelectedId} onChange={changeQuantity} /> : <EmptyCart />}
           </div>
           <div className="sale-foot">
+            {/* "Producto manual" adds a cart line (no payment): it lives with the cart, reachable without opening Cobrar. */}
+            <TouchButton variant="secondary" icon={PenLine} onClick={() => setManualOpen(true)} disabled={busy || !cajaOpen}>Producto manual</TouchButton>
             <span className="sale-client"><User size={20} aria-hidden="true" />{customer ? customer.name : "Consumidor final"}</span>
             {invoiceConfigured && lastSaleId && <TouchButton variant="ghost" icon={FileText} onClick={() => setInvoiceOpen(true)}>Factura de la última venta</TouchButton>}
             <TouchButton variant="ghost" icon={Ban} className="sale-del" disabled={busy || (sales.length === 1 && !itemCount)} onClick={() => (itemCount ? setCancelOpen(true) : void cancelCurrentSale())}>Cancelar venta</TouchButton>

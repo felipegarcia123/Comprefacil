@@ -16,6 +16,12 @@ export const formatNumber = (value: unknown) => new Intl.NumberFormat("es-CO", {
 /** Ledger quantities: up to 3 decimals (products can be sold/counted in fractional units). */
 export const formatQuantity = (value: unknown) => new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(Number(value));
 /** "+12" / "-3" — always shows the sign for a signed movement/delta. */
+/** Percentages always in es-CO ("12,5 %", non-breaking space): at most `digits` decimals, optional "+" for variations. */
+export function percent(value: unknown, digits = 1, withSign = false): string {
+  const number = Number(value);
+  const text = new Intl.NumberFormat("es-CO", { maximumFractionDigits: digits }).format(number);
+  return `${withSign && number > 0 ? "+" : ""}${text} %`;
+}
 export const signed = (value: number) => `${value > 0 ? "+" : ""}${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 }).format(value)}`;
 
 export const DEFAULT_ERROR = "Ocurrió un error";

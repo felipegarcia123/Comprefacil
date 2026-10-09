@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { DataTable, StatusBadge, Td, Th, Tr } from "@/components/ui";
-import { formatQuantity, money } from "@/lib/format";
+import { formatQuantity, money, percent } from "@/lib/format";
 import type { InventoryProduct, InventorySort } from "@/lib/types";
 
 type Props = {
@@ -65,7 +65,7 @@ export const ProductTable = memo(function ProductTable({ items, selectedId, onSe
               <Td numeric label="Stock" className="ui-num">{formatQuantity(product.current_stock)}</Td>
               {!compact && <Td numeric label="Costo" muted className="ui-num">{money.format(Number(product.unit_cost))}</Td>}
               <Td numeric label="Precio" className="ui-num">{money.format(Number(product.sale_price))}</Td>
-              {!compact && <Td numeric label="Margen" className="ui-num">{margin === null ? "—" : `${margin.toFixed(0)}%`}</Td>}
+              {!compact && <Td numeric label="Margen" className="ui-num">{margin === null ? "—" : percent(margin, 0)}</Td>}
               <Td label="Estado"><StatusBadge tone={state.tone}>{state.label}</StatusBadge></Td>
             </Tr>
           );

@@ -7,6 +7,10 @@
  */
 .purchase__head { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2) 0; }
 @media (min-width: 900px) { .purchase__head { padding: var(--sp-3) var(--gutter) 0; } }
+/* Screen-level tabs placed straight under the head (Caja, Informes): same side gutter as the head and the body,
+   instead of starting flush at x = 0. */
+.purchase > .ui-tabs { flex: none; padding-left: var(--sp-2); padding-right: var(--sp-2); }
+@media (min-width: 900px) { .purchase > .ui-tabs { padding-left: var(--gutter); padding-right: var(--gutter); } }
 .purchase__head-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); min-width: 0; }
 .purchase__head-title h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-title); font-weight: 750; color: var(--mod-deep, var(--color-compras-deep)); overflow-wrap: anywhere; }
 .purchase__save { font-size: var(--text-micro); color: var(--color-ink-muted); }

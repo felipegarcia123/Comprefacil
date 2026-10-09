@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
 import { api } from "@/lib/api";
-import { dateMedium, errorText, money } from "@/lib/format";
+import { dateMedium, errorText, money, percent } from "@/lib/format";
 import type { CutoverReport, SalesCoverage } from "@/lib/types";
 import { DataTable, InlineMessage, MetricCard, StatusBadge, Td, Th, Tr } from "@/components/ui";
 
@@ -11,7 +11,7 @@ import { DataTable, InlineMessage, MetricCard, StatusBadge, Td, Th, Tr } from "@
 const MIN_LINES_FOR_DECISION = 300;
 const MIN_SESSIONS_FOR_DECISION = 5;
 
-const pct = (value: number | null) => (value === null ? "—" : `${value.toLocaleString("es-CO")} %`);
+const pct = (value: number | null) => (value === null ? "—" : percent(value, 2));
 
 function Fact({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   const Icon = ok ? CircleCheck : CircleAlert;

@@ -139,6 +139,9 @@ function ClosedCash({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/** Cash outflow tile: danger tone only when money actually left the drawer. */
+const outClass = (value: string | number) => (Number(value) > 0 ? "cash-metric--out" : "cash-metric--neutral cash-metric--zero");
+
 function CashDashboardBody({ summary, onChanged, movesKey }: { summary: CashSummary; onChanged?: () => void; movesKey?: number }) {
   return (
     <div className="ui-stack">
@@ -151,9 +154,10 @@ function CashDashboardBody({ summary, onChanged, movesKey }: { summary: CashSumm
         <MetricCard className="cash-metric--neutral" label="Apertura" value={money.format(Number(summary.session.opening_amount))} />
         <MetricCard className="cash-metric--neutral" label="Ventas efectivo" value={money.format(Number(summary.cash_sales))} />
         <MetricCard className="cash-metric--neutral" label="Ingresos" value={money.format(Number(summary.deposits))} />
-        <MetricCard className="cash-metric--out" label="Retiros" value={money.format(Number(summary.withdrawals))} />
-        <MetricCard className="cash-metric--out" label="Gastos" value={money.format(Number(summary.expenses))} />
-        <MetricCard className="cash-metric--out" label="Pagos proveedores" value={money.format(Number(summary.supplier_payments_cash))} />
+        {/* Red only when money actually left the drawer: a $0 outflow is neutral, not an alert. */}
+        <MetricCard className={outClass(summary.withdrawals)} label="Retiros" value={money.format(Number(summary.withdrawals))} />
+        <MetricCard className={outClass(summary.expenses)} label="Gastos" value={money.format(Number(summary.expenses))} />
+        <MetricCard className={outClass(summary.supplier_payments_cash)} label="Pagos proveedores" value={money.format(Number(summary.supplier_payments_cash))} />
         {Number(summary.refunds) > 0 && <MetricCard className="cash-metric--out" label="Reembolsos" value={money.format(Number(summary.refunds))} />}
         {Number(summary.exchanges_cash ?? 0) > 0 && <MetricCard className="cash-metric--neutral" label="Diferencias cobradas en cambios" value={money.format(Number(summary.exchanges_cash))} />}
         {Number(summary.exchange_refunds_cash ?? 0) > 0 && <MetricCard className="cash-metric--out" label="Diferencias devueltas en cambios" value={money.format(Number(summary.exchange_refunds_cash))} />}

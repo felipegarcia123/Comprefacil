@@ -1,0 +1,79 @@
+/*
+ * Factura electrónica (Fase 2: movida a su propio archivo; Fase 6: restyle a tokens, misma lógica).
+ * Vive dentro del Sheet "Factura electrónica" de Venta (module="ventas"), reutiliza `operations-row`
+ * para las líneas número/estado y StatusBadge/InlineMessage/TouchButton para el resto.
+ */
+.einvoice-panel { display: flex; flex-direction: column; gap: var(--sp-2); }
+.einvoice-panel__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.einvoice-panel__head h3 { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.einvoice-input { flex: 1; min-width: 0; min-height: var(--size-touch); padding: 0 var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); }
+.einvoice-link { align-self: flex-start; color: var(--mod-deep); font-weight: 700; }
+.einvoice-reasons { margin: var(--sp-1) 0 0; padding-left: var(--sp-6); }
+.einvoice-reasons li { overflow-wrap: anywhere; }
+
+/* Panel de facturación electrónica (/electronic-invoicing, menú "Más"). Identidad de Informes: es control, no
+   operación de caja. Tabla densa + panel/hoja de detalle, igual que Clientes; tarjetas solo en Preparación. */
+.einv__tabs { flex: none; padding: var(--sp-2) var(--sp-2) 0; }
+@media (min-width: 900px) { .einv__tabs { padding: var(--sp-2) var(--gutter) 0; } }
+.einv__main { overflow-y: auto; overscroll-behavior: contain; }
+.einv__summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+@media (min-width: 640px) { .einv__summary { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.einv__figure { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: var(--size-key); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); text-align: left; cursor: pointer; touch-action: manipulation; transition: transform var(--t-press) var(--ease); }
+.einv__figure:active { transform: translateY(2px); }
+.einv__figure[aria-pressed="true"] { border-color: var(--mod-deep); background: var(--mod-tint); box-shadow: inset 0 0 0 1px var(--mod-deep); }
+.einv__figure-value { font-family: var(--font-display); font-size: var(--text-title); font-weight: 800; line-height: 1.1; }
+.einv__figure-label { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
+.einv__figure[data-tone="danger"] .einv__figure-value { color: var(--color-danger); }
+.einv__figure[data-tone="warning"] .einv__figure-value { color: var(--color-warning); }
+.einv__figure[data-tone="success"] .einv__figure-value { color: var(--color-success); }
+@media (hover: hover) { .einv__figure:hover:not([aria-pressed="true"]) { background: var(--color-paper); } }
+.einv__note { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.einv__link { display: inline-flex; align-items: center; min-height: var(--size-touch); padding: 0; border: 0; background: none; color: var(--mod-deep); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.einv__filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+@media (min-width: 900px) { .einv__filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.einv__filters select { min-height: var(--size-touch-lg); }
+.einv-cart { flex: 1; min-height: 0; }
+.einv__sale { white-space: nowrap; }
+.einv__reason { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 30ch; white-space: normal; }
+.einv-detail dd { overflow-wrap: anywhere; }
+.einv__bad { color: var(--color-warning); font-weight: 700; }
+
+.einv-detail { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3); }
+.einv-detail__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
+.einv-detail__title { margin: 0; font-family: var(--font-display); font-size: var(--text-title); color: var(--mod-deep); }
+.einv-detail__sub { margin: 2px 0 0; color: var(--color-ink-muted); }
+.einv-detail__why { display: block; font-size: var(--text-micro); color: var(--color-ink-muted); overflow-wrap: anywhere; }
+.einv-detail__cufe { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.einv-detail__cufe span { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
+.einv-detail__cufe code { font-size: var(--text-micro); overflow-wrap: anywhere; }
+.einv-detail__h3 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--text-micro); color: var(--color-ink-muted); }
+.einv-detail__lines { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.einv-detail__lines li { display: flex; justify-content: space-between; gap: var(--sp-2); }
+.einv-detail__actions { justify-content: flex-start; flex-wrap: wrap; }
+
+.einv-ready { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2) var(--sp-6); }
+@media (min-width: 900px) { .einv-ready { padding: var(--sp-3) var(--gutter) var(--sp-6); } }
+.einv-card { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: 2px solid var(--color-line); border-radius: var(--radius-panel); background: var(--color-surface); box-shadow: var(--shadow-panel); }
+.einv-card__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2); }
+.einv-card__head h2 { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.einv-card__hint { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.einv-checks { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.einv-checks li { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.einv-checks li > span { display: flex; flex-direction: column; }
+.einv-checks small { font-size: var(--text-micro); color: var(--color-ink-muted); }
+.einv-checks li[data-ok="true"] svg { color: var(--color-success); }
+.einv-checks li[data-ok="false"] svg { color: var(--color-warning); }
+.einv-checks li[data-blocking="false"] svg { color: var(--color-info); }
+.einv-groups { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.einv-groups li { display: flex; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) 0; border-bottom: 1px solid var(--color-line); }
+.einv-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+@media (min-width: 900px) { .einv-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .einv__figure { transition: none; } }
+/* Catálogo Alegra (Preparación) */
+@media (min-width: 900px) { .einv-catalog__counters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.einv-catalog__filters { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .einv-catalog__filters { grid-template-columns: minmax(0, 220px) minmax(0, 1fr); align-items: end; } }
+.einv-catalog__actions { align-items: center; }
+.einv-catalog__check { display: inline-grid; place-items: center; width: var(--size-touch); height: var(--size-touch); border-radius: var(--radius-input); cursor: pointer; }
+.einv-catalog__check input { width: 24px; height: 24px; accent-color: var(--mod-deep); cursor: pointer; }
+.einv-catalog__check--on { background: var(--mod-tint); }

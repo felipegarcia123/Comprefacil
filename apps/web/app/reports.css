@@ -1,0 +1,59 @@
+/*
+ * Informes screen (Phase 5). Identity: teal, `BarChart3`, líneas finas horizontales de toldo.
+ * Folds in the ex-`/dashboard` flexible date-range view as a 4th tab ("Rango" — see dashboard/page.tsx).
+ * Reuses `purchase__head*`/`ui-metric-grid`/`operations-panel`/`operations-row`/`count-back-link`/
+ * `inventory-select` — only the genuinely new pieces (report cards, charts layout) get classes here.
+ */
+.reports-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-6); overflow: auto; }
+@media (min-width: 900px) { .reports-body { padding: 0 var(--gutter) var(--sp-6); max-width: 1400px; margin: 0 auto; width: 100%; } }
+
+.reports-live-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.reports-live-title h2 { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.reports-window { color: var(--mod-deep); font-weight: 700; font-size: var(--text-body); }
+
+.reports-period { padding: var(--sp-2) 0; }
+.reports-period strong { display: block; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--color-ink); }
+.reports-period small { color: var(--color-ink-muted); }
+
+.reports-secondary { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
+@media (min-width: 640px) { .reports-secondary { grid-template-columns: repeat(4, 1fr); } }
+.reports-secondary > div { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: var(--sp-3); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
+.reports-secondary small { color: var(--color-ink-muted); font-weight: 700; font-size: var(--text-micro); }
+.reports-secondary b { font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--color-ink); }
+
+.reports-insights { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); border-radius: var(--radius-panel); overflow: hidden; }
+@media (min-width: 900px) { .reports-insights { grid-template-columns: repeat(4, 1fr); } }
+.reports-insights span { display: flex; flex-direction: column; gap: 4px; padding: var(--sp-2) var(--sp-3); background: var(--color-surface); color: var(--color-ink-muted); font-size: var(--text-micro); }
+.reports-insights b { color: var(--color-ink); font-size: var(--text-body); }
+
+.reports-two { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
+@media (min-width: 900px) { .reports-two { grid-template-columns: 1fr 1fr; } }
+
+.report-card { padding: var(--sp-3); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); min-width: 0; }
+.reports-card-header { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); flex-wrap: wrap; }
+.reports-card-header h2 { margin: 0; font-family: var(--font-display); font-size: var(--text-body); color: var(--color-ink); }
+
+.reports-month-picker { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.reports-month-picker label { display: flex; align-items: center; gap: var(--sp-2); color: var(--color-ink); font-weight: 700; }
+.reports-month-picker input[type="month"], .reports-month-picker input[type="date"] { min-height: var(--size-touch); padding: 0 var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); font: inherit; }
+
+.reports-kpi .ui-metric-card__caption { margin-top: 2px; }
+
+.reports-channel-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); }
+.reports-channel-list span { display: flex; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2); background: var(--color-paper); border-radius: var(--radius-input); font-size: var(--text-micro); }
+
+.reports-top-products { margin: 0; padding: 0; list-style: none; counter-reset: rank; }
+.reports-top-products li { counter-increment: rank; display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--color-line); }
+.reports-top-products li::before { content: counter(rank) "."; color: var(--color-ink-muted); font-weight: 800; margin-right: var(--sp-1); }
+.reports-top-products li span { display: flex; flex-direction: column; }
+.reports-top-products li small { color: var(--color-ink-muted); }
+.reports-top-products li b { font-variant-numeric: tabular-nums; }
+
+.reports-outgoing-info { display: flex; flex-wrap: wrap; gap: var(--sp-4); padding: var(--sp-3); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
+.reports-outgoing-info span { display: flex; flex-direction: column; color: var(--color-ink-muted); }
+.reports-outgoing-info b { color: var(--color-ink); }
+.reports-outgoing-info small { margin-left: auto; align-self: center; color: var(--color-ink-muted); }
+
+.chart-empty { min-height: 160px; display: grid; place-items: center; color: var(--color-ink-muted); text-align: center; padding: var(--sp-3); }
+.chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-3); font-size: var(--text-micro); margin-top: var(--sp-2); }
+.chart-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 2px; }

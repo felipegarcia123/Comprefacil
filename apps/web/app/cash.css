@@ -1,0 +1,135 @@
+/*
+ * Caja screen (Phase 5). Identity: rojo/rosa, `Landmark`, doble línea de toldo. Reuses the shared
+ * `purchase__head*`/`purchase__notice`/`sale-empty`/`purchase-filters`/`ui-metric-grid`/`ui-form*`
+ * primitives (see purchases.css/inventory.css notes) instead of a parallel set of classes — only
+ * the genuinely new pieces (panels, channel list, difference banner) get `cash-*` classes here.
+ */
+.cash-open-since { margin: 4px 0 0; color: var(--color-ink-muted); font-size: var(--text-body); }
+.cash-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-6); overflow: auto; }
+@media (min-width: 900px) { .cash-body { padding: 0 var(--gutter) var(--sp-6); } }
+
+.cash-metric--neutral { --mod-deep: var(--color-ink); --mod-tint: var(--color-paper); }
+.cash-metric--out .ui-metric-card__label, .cash-metric--out .ui-metric-card__value { color: var(--color-danger); }
+
+.cash-columns { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
+@media (min-width: 900px) { .cash-columns { grid-template-columns: 1fr 1fr; } }
+
+.cash-panel { display: flex; flex-direction: column; background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); overflow: hidden; }
+.cash-panel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3); border-bottom: 1px solid var(--color-line); }
+.cash-panel__head h2 { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.cash-panel__head p { margin: 2px 0 0; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.cash-panel__total { font-family: var(--font-display); font-size: var(--text-title); color: var(--mod-deep); }
+/* Section 4 (Fase 6): una cifra financiera normal no es una alerta — el rojo de Caja se reserva
+   para salidas de dinero (Pagos a proveedores ya es correcto en --mod-deep); el total vendido es
+   una cifra neutra/positiva y no debe leerse como "cuidado". */
+.cash-panel__total--neutral { color: var(--color-ink); }
+.cash-panel__footnote { margin: 0; padding: var(--sp-2) var(--sp-3); background: var(--color-paper); color: var(--color-ink-muted); font-size: var(--text-micro); }
+.cash-panel .purchase-filters { padding: var(--sp-2) var(--sp-3) 0; }
+.cash-panel .cash-cart { flex: 1; min-height: 0; }
+
+.cash-channel-list { display: flex; flex-direction: column; margin: 0; padding: 0 var(--sp-3); list-style: none; }
+.cash-channel-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--color-line); font-size: var(--text-body); }
+.cash-channel-list li:last-child { border-bottom: 0; }
+.cash-channel-list li span { display: flex; flex-direction: column; font-weight: 700; }
+.cash-channel-list li small { font-weight: 400; color: var(--color-ink-muted); }
+
+.cash-amount-preview { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.cash-reason-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+
+.cash-close-hint { margin: 0; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.cash-difference { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3); border-radius: var(--radius-input); background: var(--color-paper); }
+.cash-difference b { font-family: var(--font-display); font-size: var(--text-subtitle); }
+.cash-difference--danger b { color: var(--color-danger); }
+.cash-difference--warning b { color: var(--color-warning); }
+.cash-difference--success b { color: var(--color-success); }
+.cash-confirm-line { display: flex; align-items: center; gap: var(--sp-2); }
+
+@media (max-width: 639px) { .cash-reason-buttons { grid-template-columns: 1fr; } }
+.cash-invoicing-mode { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* DETALLE DE VENTA (post-venta 0027): history first, actions at the bottom, every figure tabular. */
+.sale-detail { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--sp-4); overflow-y: auto; overscroll-behavior: contain; font-family: var(--font-sans); }
+.sale-detail__summary { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.sale-detail__meta { margin: var(--sp-1) 0 0; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail__totals { display: flex; gap: var(--sp-4); margin: 0; }
+.sale-detail__totals div { display: flex; flex-direction: column; align-items: flex-end; }
+.sale-detail__totals dt { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail__totals dd { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sale-detail__out { color: var(--color-danger); }
+.sale-detail__section h3, .sale-detail__form-title { margin: 0 0 var(--sp-1); font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.sale-detail__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.sale-detail__list li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--color-line); font-size: var(--text-body); }
+.sale-detail__list li:last-child { border-bottom: 0; }
+.sale-detail__list li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 700; }
+.sale-detail__list small { font-weight: 400; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail__list b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sale-detail__external > span { font-weight: 400; color: var(--color-ink-muted); }
+.sale-detail__channel { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.sale-detail__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+@media (min-width: 900px) { .sale-detail__actions { grid-template-columns: repeat(4, 1fr); } }
+.sale-detail__blocked { margin: 0; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail__reasons { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+@media (max-width: 639px) { .sale-detail__reasons { grid-template-columns: 1fr; } }
+.sale-detail__check { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--size-touch); font-weight: 400; font-size: var(--text-body); }
+.sale-detail__check input { width: 24px; height: 24px; accent-color: var(--mod-strong); }
+.sale-detail__amount { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3); border-radius: var(--radius-input); background: var(--color-paper); }
+.sale-detail__amount b { font-family: var(--font-display); font-size: var(--text-title); font-variant-numeric: tabular-nums; }
+
+/* Movimientos de la sesión: concept = title on its own line + muted detail line (never glued together).
+   Rows that open the sale detail are 56px tall and end with a chevron: tappable without looking like a web link. */
+.cash-concept { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.cash-concept__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cash-concept__text b { font-weight: 700; line-height: 1.2; }
+.cash-concept__text small { font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); line-height: 1.3; }
+.cash-concept__go { flex: none; color: var(--color-ink-muted); }
+.cash-cart .ui-tr[data-interactive="true"] .ui-td { height: var(--size-touch-lg); }
+.cash-amount { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+.cash-concept__spacer { display: inline-block; width: 24px; }
+.sale-detail__footer { position: sticky; bottom: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-2); margin: 0 calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)); padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--color-surface); border-top: 1px solid var(--color-line); }
+/* Post-sale forms: the confirm row stays visible while the lines/motives scroll (critical action never below the fold). */
+.sale-detail > .ui-form > .ui-form__actions { position: sticky; bottom: calc(-1 * var(--sp-4)); margin: 0 calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)); padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--color-surface); border-top: 1px solid var(--color-line); }
+/* The wide sheet's body hands scrolling to .sale-detail, so its sticky footers sit exactly at the bottom edge. */
+.ui-sheet--wide .ui-sheet__body { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
+.ui-sheet--wide .sale-detail { flex: 1; min-height: 0; }
+/* Form footer = amount (when there is one) + error + confirm row, always visible. Replaces the sticky action row above. */
+.sale-detail > .ui-form > .ui-form__actions { position: static; margin: 0; padding: 0; border-top: 0; }
+.sale-detail__formfoot { position: sticky; bottom: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-2); margin: 0 calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)); padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--color-surface); border-top: 1px solid var(--color-line); }
+.sale-detail__confirm-list { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0 0 var(--sp-2); padding: 0; list-style: none; }
+.sale-detail__confirm-list li { display: flex; flex-direction: column; }
+.sale-detail__confirm-list span { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail__blocked b { color: var(--color-ink); }
+.sale-detail__refund { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: 2px; font-weight: 400; }
+.sale-detail__correction { display: flex; flex-direction: column; gap: 2px; }
+.sale-detail__void-summary { display: flex; flex-direction: column; gap: var(--sp-1); margin: var(--sp-2) 0 0; }
+.sale-detail__void-summary div { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.sale-detail__void-summary dt { color: var(--color-ink-muted); }
+.sale-detail__void-summary dd { margin: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-weight: 700; }
+.sale-detail__void-summary small { font-weight: 400; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.sale-detail .ui-choice__item:disabled { opacity: 0.45; cursor: not-allowed; border-style: dashed; }
+/* Caja can show up to 8 cards (Reembolsos / Correcciones de pago): figures never overflow their card. */
+@media (min-width: 1024px) { .cash-metrics { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
+
+/* CAMBIAR PRODUCTO (0027): the main post-sale action. */
+.exchange__steps { display: flex; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.exchange__steps li { display: flex; align-items: center; gap: var(--sp-2); flex: 1; padding: var(--sp-2); border-radius: var(--radius-input); background: var(--color-paper); color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 700; }
+.exchange__steps li b { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-surface); color: var(--color-ink); }
+.exchange__steps li.is-current { background: var(--mod-tint); color: var(--mod-deep); }
+.exchange__steps li.is-current b { background: var(--mod-strong); color: var(--mod-on); }
+.exchange__results { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.exchange__result { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--size-touch-lg); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--color-line-strong); border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.exchange__result:active { background: var(--mod-tint); }
+.exchange__result span { display: flex; flex-direction: column; font-weight: 700; }
+.exchange__result small { font-weight: 400; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.exchange__cart-actions { display: flex; align-items: center; gap: var(--sp-2); }
+.exchange__manual { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border-radius: var(--radius-panel); background: var(--color-paper); }
+.exchange__totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin: 0; }
+.exchange__totals div { display: flex; flex-direction: column; padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-input); background: var(--color-paper); }
+.exchange__totals dt { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.exchange__totals dd { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); font-weight: 700; font-variant-numeric: tabular-nums; }
+.exchange__difference.is-pay { background: var(--mod-tint, var(--color-paper)); }
+.exchange__difference.is-pay dd { color: var(--color-ink); }
+.exchange__difference.is-left { background: var(--color-paper); }
+.exchange__difference.is-left dd { color: var(--color-ink); }
+@media (max-width: 639px) { .exchange__totals { grid-template-columns: 1fr; } .exchange__steps li { font-size: 0; } .exchange__steps li b { font-size: var(--text-micro); } }
+.sale-detail__list li > .exchange__cart-actions { flex: none; flex-direction: row; font-weight: 400; }
+.exchange__totals dd.is-text { font-family: var(--font-sans); font-size: var(--text-body); line-height: 1.6; color: var(--color-success); }

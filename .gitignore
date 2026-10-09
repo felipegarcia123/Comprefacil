@@ -1,0 +1,24 @@
+.env
+.env.*
+!.env.example
+.next/
+node_modules/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+
+# Data, backups and fiscal evidence never go into version control
+backups/
+*.dump
+*.sql.gz
+database/alegra/
+database/products/*.xlsx
+database/products/*.csv
+
+# Generated / local
+*.tsbuildinfo
+*.log
+.codex/
+test-results/
+playwright-report/

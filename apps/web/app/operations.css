@@ -1,0 +1,66 @@
+/*
+ * Resumen operativo screen (Phase 5). Route /operations, reached from the "Más" menu (not a Home
+ * module) but visually part of Caja's world: same `data-module="caja"` identity, same jornada
+ * window (`resolve_operational_window`) — "misma jornada, mismos números" in both screens.
+ * Reuses `purchase__head*`/`purchase__notice`/`ui-row`/`ui-choice*`/`inventory-select` — only the
+ * genuinely new pieces (category groups, side panels) get `operations-*` classes here.
+ */
+.operations-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-6); overflow: auto; }
+@media (min-width: 900px) { .operations-body { flex-direction: row; align-items: flex-start; padding: 0 var(--gutter) var(--sp-6); } }
+
+.operations-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); overflow: hidden; }
+.operations-side { flex: none; display: flex; flex-direction: column; gap: var(--sp-3); }
+@media (min-width: 900px) { .operations-side { width: 340px; } }
+
+.operations-groups { display: flex; flex-direction: column; }
+.operations-groups__head { display: grid; grid-template-columns: minmax(120px,1fr) 100px 100px 100px; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--color-paper); color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; }
+.operations-groups__row { display: block; border-bottom: 1px solid var(--color-line); }
+.operations-groups__row summary { display: grid; grid-template-columns: minmax(120px,1fr) 100px 100px 100px; gap: var(--sp-2); align-items: center; padding: var(--sp-3); cursor: pointer; list-style: none; min-height: var(--size-touch); }
+.operations-groups__row summary::-webkit-details-marker { display: none; }
+.operations-groups__row summary span, .operations-groups__row summary b { text-align: right; font-variant-numeric: tabular-nums; }
+.operations-groups__row--flat { display: grid; grid-template-columns: minmax(120px,1fr) 100px 100px 100px; gap: var(--sp-2); align-items: center; padding: var(--sp-3); color: var(--color-ink-muted); }
+.operations-groups__row--flat span, .operations-groups__row--flat b { text-align: right; }
+.operations-groups__detail { padding: var(--sp-1) var(--sp-3) var(--sp-3) calc(var(--sp-3) + var(--sp-4)); background: var(--color-paper); display: flex; flex-direction: column; gap: 4px; }
+.operations-groups__detail small { display: block; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+.operations-groups__detail span { display: flex; justify-content: space-between; padding: 4px 0; color: var(--color-ink); }
+.operations-groups__extra { border-top: 2px solid var(--color-line); margin-top: 2px; }
+.operations-groups__extra > small { display: block; padding: var(--sp-2) var(--sp-3) 2px; color: var(--color-ink-muted); font-size: var(--text-micro); font-weight: 800; text-transform: uppercase; }
+.operations-groups__totals { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--sp-4); padding: var(--sp-3); background: var(--mod-tint); }
+.operations-groups__total-item { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); text-transform: uppercase; }
+/* Section 4 (Fase 6): Efectivo/Electrónico/Total vendido son cifras neutras/positivas, no alertas
+   — el rojo de Caja se reserva para salidas de dinero (ver también cash.css). */
+.operations-groups__total-item b { font-size: var(--text-subtitle); color: var(--color-ink); text-transform: none; margin-top: 2px; }
+.operations-groups__grand-total { display: flex; flex-direction: column; align-items: flex-end; font-size: var(--text-micro); font-weight: 800; color: var(--color-ink-muted); text-transform: uppercase; }
+.operations-groups__grand-total strong { font-family: var(--font-display); font-size: var(--text-title); color: var(--color-ink); margin-top: 2px; }
+
+.operations-panel { display: flex; flex-direction: column; gap: var(--sp-1); background: var(--color-surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); padding: var(--sp-3); }
+.operations-panel__head h2 { margin: 0 0 var(--sp-1); font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--mod-deep); }
+.operations-row { display: flex; justify-content: space-between; padding: var(--sp-1) 0; border-bottom: 1px solid var(--color-line); font-size: var(--text-body); }
+.operations-row:last-of-type { border-bottom: 0; }
+.operations-note { margin: var(--sp-2) 0 0; color: var(--color-ink-muted); font-size: var(--text-micro); line-height: 1.4; }
+
+.operations-search-input { flex: 1; min-width: 0; min-height: var(--size-touch); padding: 0 var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); }
+.operations-pick-product { display: block; width: 100%; margin-top: 4px; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line); border-radius: var(--radius-input); background: var(--color-paper); color: var(--color-ink); text-align: left; font: inherit; cursor: pointer; touch-action: manipulation; }
+.operations-classify-row { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--color-line); }
+
+@media (max-width: 639px) {
+  .operations-groups__head, .operations-groups__row summary, .operations-groups__row--flat { grid-template-columns: minmax(90px,1fr) 74px 74px 80px; gap: 6px; font-size: var(--text-micro); }
+}
+/* Cuadre parcial (block 1 of the day's closing): scale inputs + POS cash by category. Never "esperado"/"diferencia". */
+.recon__scale { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.recon__title { display: flex; align-items: center; gap: var(--sp-1); margin: var(--sp-2) 0 0; font-weight: 700; }
+.recon__subtotal { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 2px solid var(--color-line); font-weight: 700; }
+.recon__note { font-size: var(--text-micro); color: var(--color-ink-muted); }
+.recon__observed { color: var(--color-ink-muted); }
+/* Block 1 close report (Caja: before/after closing, Historial). Partial reconciliation only. */
+.recon__inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-2); }
+.recon-report { display: grid; gap: var(--sp-3); }
+.recon-report__block { display: grid; gap: var(--sp-1); }
+.recon-report__block h3 { margin: 0; font-size: var(--text-body); }
+.recon-report__sum { padding-top: var(--sp-1); border-top: 2px solid var(--color-line); font-weight: 700; }
+.recon-report__note { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.recon-report__control { color: var(--color-ink-muted); }
+.recon-close { display: grid; gap: var(--sp-3); }
+.recon-close__when { margin: 0; color: var(--color-ink-muted); }
+.recon-preclose { display: grid; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line); border-radius: var(--radius-key); }
+.recon-preclose__missing { margin: 0; font-weight: 700; color: var(--color-warning, var(--color-ink)); }

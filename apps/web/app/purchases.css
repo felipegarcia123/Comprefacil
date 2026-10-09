@@ -1,0 +1,82 @@
+/*
+ * Compras screen (Phase 3). Reuses Ventas' dense-table/scan primitives (`sale-*` classes in
+ * sales.css: `.sale-empty`, `.sale-results`, `.sale-result`, `.sale-cart`, `.sale-col-*`,
+ * `.sale-name`, `.sale-del`, `.sale-status`, `.sale-closed`, `.pay__top`/`.pay__scroll`/`.pay__cta`)
+ * — that IS the shared dense-list/payment-panel language, not accidental duplication; only the
+ * genuinely new pieces (header, fields, pricing detail, receipt) get `purchase-*` classes here.
+ */
+.purchase__head { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2) 0; }
+@media (min-width: 900px) { .purchase__head { padding: var(--sp-3) var(--gutter) 0; } }
+.purchase__head-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.purchase__head-title h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-title); font-weight: 750; color: var(--mod-deep, var(--color-compras-deep)); overflow-wrap: anywhere; }
+.purchase__save { font-size: var(--text-micro); color: var(--color-ink-muted); }
+.purchase__save--saving { color: var(--color-compras-deep); }
+.purchase__save--error { color: var(--color-danger); font-weight: 700; }
+.purchase__notice { padding: 0 var(--sp-2); }
+@media (min-width: 900px) { .purchase__notice { padding: 0 var(--gutter); } }
+
+.purchase__fields { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-3); padding: var(--sp-3) var(--sp-2); }
+@media (min-width: 900px) { .purchase__fields { padding: var(--sp-3) var(--gutter); grid-template-columns: 1fr 1fr auto; } }
+.purchase__field-ro { display: flex; flex-direction: column; gap: 2px; font-family: var(--font-sans); }
+.purchase__field-ro small { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
+.purchase__field-ro b { font-size: var(--text-body); }
+.purchase__notes { padding: 0 var(--sp-1); }
+.purchase__panel { display: flex; flex-direction: column; }
+.purchase__panel .pay__cta { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.purchase-scan { position: relative; flex: none; }
+.purchase-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.purchase-history-row { justify-content: space-between; }
+.purchase-history-row__end { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+
+.purchase-col-cost { width: 150px; }
+.purchase-col-actions { width: 64px; } /* one 48px icon button (see LineTable.tsx, section 11) */
+/* 900-1199 (LineTable's `stacked`): costo unitario y subtotal en una sola celda, dos niveles. */
+.purchase-col-cost-stacked { width: 130px; }
+.purchase-cost-btn--stacked { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.purchase-cost-btn--stacked small { font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); }
+.purchase-cost-btn--stacked strong { font-size: var(--text-body); font-weight: 750; }
+/* Deuda residual documentada (sección 11): 900-959px (un margen de ~60px justo encima del piso de
+   la pestaña lateral) todavía pide un scroll horizontal INTERNO de la tabla (nunca de la página) —
+   confirmado que el contenido de esta celda ya no puede angostarse más sin recortar cifras reales;
+   1024-1199, el rango que realmente se reportó roto, quedó resuelto sin ese scroll. */
+.purchase-cost-btn { min-height: var(--size-touch); padding: 0 var(--sp-2); border: 2px solid transparent; border-radius: var(--radius-input); background: transparent; color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.purchase-cost-btn:active { background: var(--mod-tint); }
+.purchase-cost-btn:focus-visible { outline: 3px solid var(--mod-deep); outline-offset: 1px; }
+@media (hover: hover) { .purchase-cost-btn:hover { background: var(--color-paper); border-color: var(--color-line-strong); } }
+
+.purchase-detail-code { margin: 0; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.purchase-decision-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+@media (min-width: 640px) { .purchase-decision-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.purchase-decision-grid section { display: flex; flex-direction: column; gap: var(--sp-2); }
+.purchase-decision-grid h3 { margin: 0; font-family: var(--font-sans); font-size: var(--text-micro); font-weight: 800; letter-spacing: 0.03em; color: var(--color-ink-muted); }
+.purchase-decision-grid input { width: 100%; min-height: var(--size-touch); padding: 0 var(--sp-2); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); }
+.purchase-metric { display: flex; justify-content: space-between; gap: var(--sp-2); padding: 6px 0; border-bottom: 1px solid var(--color-line); font-family: var(--font-sans); font-size: var(--text-micro); color: var(--color-ink-muted); }
+.purchase-metric b { color: var(--color-ink); font-weight: 700; }
+.purchase-metric--accent b { color: var(--mod-deep, var(--color-compras-deep)); }
+.purchase-metric--warning b { color: var(--color-warning); }
+.purchase-metric--danger b { color: var(--color-danger); }
+.purchase-warning-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--text-micro); color: var(--color-warning); }
+.purchase-warning-row strong { color: var(--color-danger); }
+.purchase-subtotal { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-2) 0; border-top: 2px solid var(--color-line); font-family: var(--font-sans); font-size: var(--text-body); font-weight: 700; }
+.purchase-subtotal strong { font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--color-compras-deep); }
+
+.ui-inline-confirm { margin-top: var(--sp-3); padding: var(--sp-3); border-radius: var(--radius-panel); background: var(--color-compras-tint); }
+.ui-inline-confirm p { margin: 0 0 var(--sp-3); font-size: var(--text-body); }
+.ui-field-error { margin: 0; font-size: var(--text-micro); color: var(--color-danger); font-weight: 700; }
+.ui-field--invalid { border-color: var(--color-danger) !important; }
+.ui-empty-hint { margin: var(--sp-2) 0; color: var(--color-ink-muted); font-size: var(--text-body); text-align: center; }
+
+.purchase__receipt { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-2); overflow: auto; }
+@media (min-width: 900px) { .purchase__receipt { padding: var(--sp-3) var(--gutter); max-width: 900px; } }
+.purchase__receipt-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-3); margin: 0; }
+.purchase__receipt-meta dt { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
+.purchase__receipt-meta dd { margin: 2px 0 0; font-size: var(--text-body); }
+
+/* Below 1200px the side panel eats the width: narrow the fixed columns so Producto keeps a readable width (mirrors sales.css). */
+@media (max-width: 1199px) {
+  .purchase-col-cost { width: 110px; }
+}
+@media (max-width: 639px) {
+  .purchase-col-cost { width: 96px; }
+}

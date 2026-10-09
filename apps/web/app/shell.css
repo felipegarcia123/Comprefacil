@@ -1,0 +1,97 @@
+/*
+ * App shell: global bar + Home layout (Phase 1). Classes are prefixed `ui-appbar` / `home` so they never collide with legacy CSS.
+ * Mobile-first: base = phone (<640), then tablet 640, laptop 900, pos 1200.
+ */
+:root { --appbar-h: 56px; --chrome-h: var(--appbar-h); }
+@media (min-width: 640px) { :root { --appbar-h: 58px; --chrome-h: var(--appbar-h); } }
+/* Toggled by ContextBar itself (a client effect) only while it actually renders a chip list.
+   --chrome-h is redeclared here (not layered through an intermediate variable) because a custom
+   property's var() substitutions resolve against the element that DEFINES it, not the element that
+   later overrides a variable it referenced — overriding --contextbar-h alone on body would not have
+   changed --chrome-h as inherited from :root. */
+body.has-context-bar { --chrome-h: calc(var(--appbar-h) + 64px); }
+
+.ui-hide-movil { display: none; }
+@media (min-width: 640px) { .ui-hide-movil { display: inline; } }
+
+/* ---------- Global bar ---------- */
+.ui-appbar { position: relative; z-index: 30; background: var(--color-surface); border-bottom: 2px solid var(--color-line); font-family: var(--font-sans); color: var(--color-ink); }
+.ui-appbar__inner { display: flex; align-items: center; gap: var(--sp-2); height: calc(var(--appbar-h) - 2px); padding: 0 var(--sp-2); }
+@media (min-width: 900px) { .ui-appbar__inner { padding: 0 var(--gutter); } }
+.ui-appbar__brand { padding: 0 var(--sp-2); font-family: var(--font-display); font-size: var(--text-title); font-weight: 800; letter-spacing: 0.01em; white-space: nowrap; }
+.ui-appbar__spacer { flex: 1; }
+.ui-appbar__label { display: none; }
+.ui-appbar__label--menu { display: none; }
+.ui-from-tablet { display: none; }
+@media (min-width: 640px) { .ui-appbar__label--menu { display: inline; } .ui-only-movil { display: none; } .ui-from-tablet { display: inline-block; } }
+@media (min-width: 900px) { .ui-appbar__label { display: inline; } }
+
+.ui-appbar__home, .ui-appbar__link, .ui-appbar__session {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--sp-3); border-radius: var(--radius-key);
+  color: var(--color-ink); text-decoration: none; font-size: var(--text-body); font-weight: 700; white-space: nowrap;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--t-state) var(--ease);
+}
+.ui-appbar__home:active, .ui-appbar__link:active { background: var(--mod-tint, var(--color-paper)); }
+@media (hover: hover) { .ui-appbar__home:hover, .ui-appbar__link:hover { background: var(--mod-tint, var(--color-paper)); } }
+.ui-appbar__nav { display: none; align-items: center; gap: var(--sp-1); min-width: 0; }
+@media (min-width: 640px) { .ui-appbar__nav { display: flex; } }
+.ui-appbar__link { overflow: hidden; padding: 0 var(--sp-3); }
+.ui-appbar__link .ui-toldo { --toldo-h: 5px; position: absolute; inset: 0 0 auto 0; }
+.ui-appbar__link[aria-current="page"] { background: var(--mod-tint); color: var(--mod-deep); box-shadow: inset 0 0 0 2px var(--mod-deep); }
+.ui-appbar__context { display: inline-flex; }
+@media (min-width: 640px) { .ui-appbar__context { display: none; } }
+.ui-appbar__session { padding: 0 var(--sp-1); }
+
+/* ---------- Home ---------- */
+.home {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  min-height: calc(100dvh - var(--appbar-h)); padding: var(--gutter);
+  background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans);
+}
+.home__grid { flex: 1; display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+.home__slot { min-width: 0; }
+@media (min-width: 640px) {
+  .home__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home__slot--ventas, .home__slot--informes { grid-column: 1 / -1; }
+}
+@media (min-width: 900px) {
+  .home__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home__slot--ventas { grid-column: span 6; }
+  .home__slot--inventario, .home__slot--compras { grid-column: span 3; }
+  .home__slot--proveedores, .home__slot--caja, .home__slot--informes { grid-column: span 2; }
+}
+@media (min-width: 1200px) {
+  .home__grid { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(210px, 1fr)); }
+  .home__slot--ventas { grid-column: span 6; }
+  .home__slot--inventario, .home__slot--compras { grid-column: span 3; }
+  .home__slot--proveedores, .home__slot--caja, .home__slot--informes { grid-column: span 4; }
+}
+/* Grid tracks (not min-height) size the cards inside Home */
+.home__grid > .ui-module { height: 100%; min-height: 0; }
+@media (min-width: 900px) { .home__grid > .ui-module { min-height: 190px; } }
+
+.ui-appbar__count { min-width: 22px; padding: 1px 7px; border-radius: var(--radius-chip); background: var(--mod-strong); color: var(--mod-on); font-size: var(--text-micro); font-weight: 700; text-align: center; }
+@media (max-width: 899px) { .ui-appbar__link .ui-appbar__count { position: absolute; top: 2px; right: 2px; padding: 0 5px; min-width: 18px; } }
+
+/* ---------- ContextBar (global, cross-module) ---------- */
+.ui-context-bar { background: var(--color-surface); border-bottom: 2px solid var(--color-line); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.ui-context-bar::-webkit-scrollbar { display: none; }
+.ui-context-bar__list { display: flex; gap: var(--sp-2); margin: 0; padding: var(--sp-2); list-style: none; }
+.ui-context-chip {
+  flex: none; display: flex; flex-direction: column; overflow: hidden;
+  min-height: 44px; min-width: 96px; max-width: 220px; border-radius: var(--radius-key);
+  border: 2px solid var(--color-line-strong); background: var(--color-surface); color: var(--color-ink);
+  text-decoration: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--t-state) var(--ease);
+}
+.ui-context-chip .ui-toldo { --toldo-h: 5px; opacity: 0.5; }
+.ui-context-chip__body { display: flex; flex-direction: column; justify-content: center; gap: 0; min-width: 0; padding: 4px var(--sp-3); font-family: var(--font-sans); font-size: var(--text-micro); font-weight: 700; line-height: 1.2; }
+.ui-context-chip__body span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-context-chip__body small { font-weight: 400; color: var(--color-ink-muted); }
+.ui-context-chip--single .ui-context-chip__body { justify-content: center; }
+.ui-context-chip[aria-current="page"] { background: var(--mod-tint); border-color: var(--mod-deep); color: var(--mod-deep); }
+.ui-context-chip[aria-current="page"] .ui-toldo { opacity: 1; }
+.ui-context-chip:active { background: var(--mod-tint); }
+@media (hover: hover) { .ui-context-chip:not([aria-current="page"]):hover { background: var(--color-paper); } }

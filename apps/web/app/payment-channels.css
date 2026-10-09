@@ -1,0 +1,10 @@
+/*
+ * Medios de pago (Phase 6). Configuración, no operación diaria — comparte la identidad de Caja
+ * (`data-module="caja"`) igual que Resumen, y reutiliza `purchase__head*`/`purchase__notice`/
+ * `ui-form*`/`inventory-select`. Retira `admin.css` y `payments.css` (Fase 0, sin tokens, sin
+ * consumidores después de este cambio) y su clase `.stock-badge` prestada de Inventario.
+ */
+.channels-body { flex: 1; min-height: 0; padding: 0 var(--sp-2) var(--sp-6); overflow: auto; }
+@media (min-width: 900px) { .channels-body { padding: 0 var(--gutter) var(--sp-6); } }
+.channels-cart { flex: 1; min-height: 0; }
+.channels-hint { margin: 0; color: var(--color-ink-muted); font-size: var(--text-micro); }

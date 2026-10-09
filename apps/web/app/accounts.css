@@ -1,0 +1,83 @@
+/* 0028 — Cuentas del negocio (Nequi / Davivienda / Nu / DaviPlata) y patrimonio de inventario.
+   Solo tokens; los colores de módulo vienen de --mod-* (Caja en Cerrar caja / Historial, Informes en Informes). */
+
+/* "Llega a" / "Sale de": cuenta destino, nunca el medio de pago */
+.account-picker { margin: var(--sp-2) 0 0; padding: 0; border: 0; min-width: 0; container-type: inline-size; }
+.account-picker legend { display: flex; align-items: center; gap: 6px; padding: 0; margin-bottom: var(--sp-1); font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
+.account-picker__missing { color: var(--color-warning); }
+/* Four accounts: one row when there is room, 2 x 2 in a narrow column (keys never under 48 px). */
+.account-picker__keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+@container (min-width: 340px) { .account-picker__keys { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.account-picker__key { position: relative; flex-direction: row; align-items: center; justify-content: center; min-height: var(--size-touch); padding: var(--sp-1) 2px; font-size: 14px; line-height: 1.1; text-align: center; letter-spacing: -0.01em; white-space: nowrap; }
+.account-picker__key svg { position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; }
+
+/* Cerrar caja: cuatro bloques que nunca suman entre sí */
+.close-flow { display: grid; gap: var(--sp-3); }
+.close-block { border: 1px solid var(--color-line); border-radius: var(--radius-panel); background: var(--color-surface); }
+.close-block > summary { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--size-touch); padding: var(--sp-2) var(--sp-3); cursor: pointer; list-style: none; font-family: var(--font-display); font-size: var(--text-subtitle); font-weight: 700; color: var(--color-ink); touch-action: manipulation; }
+.close-block > summary::-webkit-details-marker { display: none; }
+.close-block > summary::after { content: ""; margin-left: auto; width: 10px; height: 10px; border-right: 2px solid var(--color-ink-muted); border-bottom: 2px solid var(--color-ink-muted); transform: rotate(45deg); transition: transform var(--t-state) var(--ease); }
+.close-block[open] > summary::after { transform: rotate(225deg); }
+.close-block__n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--mod-tint, var(--color-paper)); color: var(--mod-deep, var(--color-ink)); font-size: 15px; }
+.close-block__hint { margin-left: var(--sp-2); font-family: var(--font-sans); font-size: var(--text-micro); font-weight: 400; color: var(--color-ink-muted); }
+.close-block__body { display: grid; gap: var(--sp-3); padding: 0 var(--sp-3) var(--sp-3); }
+
+/* Cuentas: una fila por cuenta (esperado / saldo real / diferencia) */
+.accounts-list { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.account-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--color-line); border-radius: var(--radius-input); background: var(--color-surface); }
+.account-row__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.account-row__name { font-size: var(--text-subtitle); font-weight: 700; color: var(--color-ink); }
+.account-row__figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); align-items: end; }
+.account-row__figure { display: grid; gap: 2px; min-width: 0; }
+.account-row__figure span { font-size: var(--text-micro); color: var(--color-ink-muted); text-align: right; }
+.account-row__figure b { font-size: var(--text-table); text-align: right; }
+.account-row__figure input { width: 100%; min-height: var(--size-touch); padding: 0 var(--sp-2); border: 2px solid var(--color-line-strong); border-radius: var(--radius-input); font-family: var(--font-sans); font-size: var(--text-table); text-align: right; font-variant-numeric: tabular-nums; }
+.account-row__note { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.account-row__flows { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.account-row__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.account-diff { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; font-weight: 700; }
+.account-diff--ok { color: var(--color-success); }
+.account-diff--neg { color: var(--color-danger); }
+.account-diff--pos { color: var(--color-warning); }
+.account-diff--none { color: var(--color-ink-muted); font-weight: 400; }
+@container (max-width: 520px) { .account-row__figures { grid-template-columns: 1fr 1fr; } .account-row__figure--input { grid-column: 1 / -1; order: 3; } }
+.accounts-panel { container-type: inline-size; }
+
+/* Patrimonio de inventario */
+.patrimony { display: grid; gap: var(--sp-2); }
+.patrimony__figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--sp-2); }
+.patrimony__figures .ui-metric-card { min-width: 0; }
+.patrimony__figures .ui-metric-card__value { overflow-wrap: anywhere; }
+.patrimony details > summary { display: flex; align-items: center; min-height: var(--size-touch); cursor: pointer; touch-action: manipulation; }
+.patrimony__coverage { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.patrimony__missing { margin: 0; padding-left: var(--sp-4); font-size: var(--text-micro); color: var(--color-ink-muted); }
+.patrimony__var--down { color: var(--color-danger); }
+.patrimony__var--up { color: var(--color-success); }
+
+/* Informes: Patrimonio / Cuentas */
+.patrimony-chart { height: 240px; min-width: 0; }
+.accounts-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-3); }
+.accounts-history td.ui-num, .patrimony-history td.ui-num { text-align: right; }
+
+/* Movimientos de cuentas */
+.account-moves { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.account-moves li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: var(--size-touch); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--color-line); border-radius: var(--radius-input); }
+.account-moves small { display: block; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.close-report__title { margin: 0; font-family: var(--font-display); font-size: var(--text-subtitle); color: var(--color-ink); }
+.cash-history__muted { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.cash-history__accounts { display: block; color: var(--color-ink-muted); font-size: var(--text-micro); }
+.account-card__rows { display: grid; gap: 0; margin: 0; padding: 0 var(--sp-3) var(--sp-3); }
+.account-card__rows div { display: flex; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--color-line); }
+.account-card__rows div:last-child { border-bottom: 0; }
+.account-card__rows dt { color: var(--color-ink-muted); font-size: var(--text-micro); }
+.account-card__rows dd { margin: 0; font-size: var(--text-table); font-weight: 700; color: var(--color-ink); }
+.account-card__rows div:first-child dd { font-family: var(--font-display); font-size: var(--text-subtitle); }
+.patrimony--diagnostic { padding: var(--sp-3); border: 1px dashed var(--color-line-strong); border-radius: var(--radius-panel); background: var(--color-paper); }
+.patrimony__diag-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.patrimony__diag-rows { padding: 0; }
+.patrimony__diag-rows div:first-child dd { font-family: var(--font-sans); font-size: var(--text-table); }
+.patrimony__coverage svg { vertical-align: -3px; }
+.patrimony__diag > summary { display: flex; align-items: center; min-height: var(--size-touch); cursor: pointer; touch-action: manipulation; }
+.patrimony__coverage svg { display: inline; }
+.patrimony__declared div:first-child dd { font-family: var(--font-display); font-size: var(--text-figure, var(--text-subtitle)); }
+.patrimony__declared dd { text-align: right; }

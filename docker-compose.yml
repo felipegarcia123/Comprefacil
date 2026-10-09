@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pos}
+      POSTGRES_USER: ${POSTGRES_USER:-pos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pos}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pos_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pos} -d ${POSTGRES_DB:-pos}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pos:pos@db:5432/pos}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      ALEGRA_ENABLED: ${ALEGRA_ENABLED:-false}
+      ALEGRA_API_URL: ${ALEGRA_API_URL:-https://api.alegra.com/api/v1}
+      ALEGRA_EMAIL: ${ALEGRA_EMAIL:-}
+      ALEGRA_TOKEN: ${ALEGRA_TOKEN:-}
+      ALEGRA_NUMBER_TEMPLATE_ID: ${ALEGRA_NUMBER_TEMPLATE_ID:-}
+      ALEGRA_AUTO_ISSUE: ${ALEGRA_AUTO_ISSUE:-false}
+      ALEGRA_AUTO_ISSUE_STAMP: ${ALEGRA_AUTO_ISSUE_STAMP:-false}
+      ALEGRA_FINAL_CONSUMER_CONTACT_ID: ${ALEGRA_FINAL_CONSUMER_CONTACT_ID:-}
+      ALEGRA_ITEM_MANUAL_BULK: ${ALEGRA_ITEM_MANUAL_BULK:-372}
+      ALEGRA_ITEM_MANUAL_SACK: ${ALEGRA_ITEM_MANUAL_SACK:-}
+      ALEGRA_ITEM_MANUAL_SUPER: ${ALEGRA_ITEM_MANUAL_SUPER:-}
+      ALEGRA_ITEM_MANUAL_PET_OTHER: ${ALEGRA_ITEM_MANUAL_PET_OTHER:-}
+      ALEGRA_CATALOG_CREATE_ENABLED: ${ALEGRA_CATALOG_CREATE_ENABLED:-false}
+      ALEGRA_CATALOG_BATCH_LIMIT: ${ALEGRA_CATALOG_BATCH_LIMIT:-50}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pos_data:
+

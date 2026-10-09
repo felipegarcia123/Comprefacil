@@ -1,0 +1,7 @@
+/*
+ * Proveedores screen (Phase 3). Reuses the same dense-list/detail-panel layout primitives as
+ * Compras (`.sale`, `.sale__body`, `.sale__main`, `.sale__panel`, `.sale-cart`, `.sale-empty`,
+ * `.sale-status`) and Compras' own `.purchase__head*` / `.purchase__receipt-meta` — proveedores'
+ * own identity (morado, Handshake, the dotted-zigzag toldo) comes entirely from `data-module`
+ * and the Toldo pattern, not from a separate layout language. No new classes are needed yet.
+ */

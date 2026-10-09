@@ -1,0 +1,29 @@
+/*
+ * Clientes (menú "Más") y el selector de cliente de Venta. Identidad de Venta (`data-module="ventas"`):
+ * son las personas a quienes se factura; no se crea un séptimo color. Reutiliza el layout tabla densa +
+ * panel (`.sale*`, `.purchase__head*`, `.purchase__receipt-meta`) sin `sale-cart` (CLAUDE.md, sección 10).
+ */
+.customers__notices { display: flex; flex-direction: column; gap: var(--sp-2); }
+.customers__sync { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
+.customers-cart { flex: 1; min-height: 0; }
+.customers__placeholder { min-height: auto; padding: var(--sp-6); }
+.customers__detail { padding: var(--sp-3); }
+.customers__name { margin: 0; font-family: var(--font-display); font-size: var(--text-title); color: var(--mod-deep); overflow-wrap: anywhere; }
+.customers__doc { margin: 2px 0 0; color: var(--color-ink-muted); }
+.customers__hint { margin: 0; font-size: var(--text-micro); color: var(--color-ink-muted); }
+.customers__detail dt { display: inline-flex; align-items: center; gap: var(--sp-1); }
+
+/* Picker (Sheet): compact rows, one scroll zone. */
+.customer-picker { display: flex; flex-direction: column; gap: var(--sp-3); }
+.customer-picker__list { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; max-height: min(52dvh, 420px); overflow-y: auto; overscroll-behavior: contain; }
+.customer-picker__hint { display: flex; align-items: center; gap: var(--sp-2); margin: 0; color: var(--color-ink-muted); }
+.customer-picker__actions { display: flex; justify-content: flex-end; }
+.customer-row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--size-touch-lg); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--color-line-strong); border-radius: var(--radius-key); background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--text-body); text-align: left; cursor: pointer; touch-action: manipulation; transition: transform var(--t-press) var(--ease); }
+.customer-row:active { transform: translateY(2px); }
+.customer-row--selected { border-color: var(--mod-deep); background: var(--mod-tint); color: var(--mod-deep); box-shadow: inset 0 0 0 1px var(--mod-deep); }
+.customer-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; color: var(--color-ink); }
+.customer-row__main strong { overflow-wrap: anywhere; }
+.customer-row__main span, .customer-row__main small { font-size: var(--text-micro); color: var(--color-ink-muted); overflow-wrap: anywhere; }
+@media (hover: hover) { .customer-row:hover:not(.customer-row--selected) { background: var(--color-paper); } }
+.customer-form select { min-height: var(--size-touch-lg); }
+@media (prefers-reduced-motion: reduce) { .customer-row { transition: none; } }

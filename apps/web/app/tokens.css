@@ -1,0 +1,137 @@
+/*
+ * Mostrador design tokens — single source of truth (Phase 0).
+ * Rules live in /CLAUDE.md ("POS UI / UX DESIGN SYSTEM"). Never write loose hex values in components.
+ * NOTE: the legacy stylesheet sets html font-size to 15px, so lengths here are in px on purpose.
+ */
+
+@theme static {
+  /* Base palette */
+  --color-paper: #f2f4f0;
+  --color-surface: #ffffff;
+  --color-ink: #16232b;
+  --color-ink-muted: #556168;
+  --color-line: #c9d1cc;
+  --color-line-strong: #6f7d77;
+  --color-lcd: #0f1e24;
+  --color-lcd-ok: #7cf0a6;
+  --color-lcd-amber: #ffc53d;
+  --color-lcd-muted: #9fb3ba;
+
+  /* Semantic states (always paired with an icon and text) */
+  --color-success: #166534;
+  --color-warning: #8a5a00;
+  --color-danger: #b42318;
+  --color-info: #1d4ed8;
+  --color-success-tint: #dcf3e3;
+  --color-warning-tint: #fdefc9;
+  --color-danger-tint: #fde4e1;
+  --color-info-tint: #dce6fa;
+
+  /* Module accents: strong = fills, tint = soft backgrounds, deep = text/borders, on = text over strong */
+  --color-ventas: #15803d;
+  --color-ventas-tint: #ddf3e4;
+  --color-ventas-deep: #0f5a2c;
+  --color-ventas-on: #ffffff;
+  --color-inventario: #2350b8;
+  --color-inventario-tint: #dce6fa;
+  --color-inventario-deep: #193b85;
+  --color-inventario-on: #ffffff;
+  --color-compras: #f0a30a;
+  --color-compras-tint: #fdefc9;
+  --color-compras-deep: #7a4d00;
+  --color-compras-on: #16232b; /* dark ink: white on this amber is only 2.1:1 */
+  --color-proveedores: #6c3fb0;
+  --color-proveedores-tint: #e8def7;
+  --color-proveedores-deep: #4b2a80;
+  --color-proveedores-on: #ffffff;
+  --color-caja: #c23b52;
+  --color-caja-tint: #f9dde2;
+  --color-caja-deep: #8a2437;
+  --color-caja-on: #ffffff;
+  --color-informes: #0a7c91;
+  --color-informes-tint: #d6eef3;
+  --color-informes-deep: #075766;
+  --color-informes-on: #ffffff;
+
+  /* Typography families (local @fontsource-variable, loaded in layout.tsx) */
+  --font-display: "Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", "Segoe UI", system-ui, sans-serif;
+
+  /* Shape */
+  --radius-key: 10px;
+  --radius-input: 8px;
+  --radius-panel: 14px;
+  --radius-chip: 999px;
+
+  /* Elevation: only two shadows exist. No blur-heavy shadows (SUNMI performance). */
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.08);
+  --shadow-key: 0 4px 0 var(--mod-deep, var(--color-ink));
+
+  /* Breakpoints (min-width, mobile-first): movil <640, tablet 640, laptop 900, pos 1200 */
+  --breakpoint-tablet: 640px;
+  --breakpoint-laptop: 900px;
+  --breakpoint-pos: 1200px;
+}
+
+:root {
+  /* Touch targets */
+  --size-touch: 48px;
+  --size-touch-lg: 56px;
+  --size-key: 64px;
+  --size-cta: 88px;
+
+  /* Spacing scale (multiples of 4) and screen gutters */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --gutter: 16px;
+
+  /* Fluid type scale: px-based clamp() so it does not depend on the legacy 15px root */
+  --text-micro: 14px; /* absolute minimum */
+  --text-body: 18px;
+  --text-table: 18px;
+  --text-subtitle: clamp(19px, 1.2vw + 10px, 22px);
+  --text-title: clamp(22px, 1.6vw + 12px, 28px);
+  --text-figure: clamp(28px, 2.4vw + 12px, 40px);
+  --text-total: clamp(40px, 4.5vw + 4px, 64px);
+
+  /* Motion: transform/opacity only */
+  --t-press: 80ms;
+  --t-state: 150ms;
+  --t-panel: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (min-width: 900px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+/* Module scope: any element with data-module exposes the accent as --mod-* */
+[data-module="ventas"] { --mod-strong: var(--color-ventas); --mod-tint: var(--color-ventas-tint); --mod-deep: var(--color-ventas-deep); --mod-on: var(--color-ventas-on); }
+[data-module="inventario"] { --mod-strong: var(--color-inventario); --mod-tint: var(--color-inventario-tint); --mod-deep: var(--color-inventario-deep); --mod-on: var(--color-inventario-on); }
+[data-module="compras"] { --mod-strong: var(--color-compras); --mod-tint: var(--color-compras-tint); --mod-deep: var(--color-compras-deep); --mod-on: var(--color-compras-on); }
+[data-module="proveedores"] { --mod-strong: var(--color-proveedores); --mod-tint: var(--color-proveedores-tint); --mod-deep: var(--color-proveedores-deep); --mod-on: var(--color-proveedores-on); }
+[data-module="caja"] { --mod-strong: var(--color-caja); --mod-tint: var(--color-caja-tint); --mod-deep: var(--color-caja-deep); --mod-on: var(--color-caja-on); }
+[data-module="informes"] { --mod-strong: var(--color-informes); --mod-tint: var(--color-informes-tint); --mod-deep: var(--color-informes-deep); --mod-on: var(--color-informes-on); }
+
+/* Keyboard focus: zero specificity so legacy `outline: none` rules still win where they exist */
+:where(a, button, input, select, textarea, summary, dialog, [tabindex]):focus-visible {
+  outline: 3px solid var(--mod-deep, var(--color-info));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

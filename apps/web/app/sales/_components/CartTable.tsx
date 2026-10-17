@@ -10,6 +10,7 @@ type Props = {
   items: Item[];
   selectedId: string;
   onSelect: (id: string) => void;
+  priceLabel?: string;
   /** quantity <= 0 removes the line. */
   onChange: (itemId: string, quantity: number) => void;
 };
@@ -32,7 +33,7 @@ export function EmptyCart() {
 /** "Producto manual" lines: which kind they are, under the description. */
 const MANUAL_LABEL: Record<ManualItemKind, string> = { SUPER: "Manual · Súper", GRANEL: "Manual · Comida a granel", BULTO: "Manual · Bulto", PET_OTHER: "Manual · Mascotas otro" };
 
-export const CartTable = memo(function CartTable({ items, selectedId, onSelect, onChange }: Props) {
+export const CartTable = memo(function CartTable({ items, selectedId, onSelect, onChange, priceLabel = "Precio" }: Props) {
   const selectedRow = useRef<HTMLTableRowElement>(null);
   useEffect(() => { selectedRow.current?.scrollIntoView?.({ block: "nearest" }); }, [selectedId, items.length]);
 
@@ -42,7 +43,7 @@ export const CartTable = memo(function CartTable({ items, selectedId, onSelect, 
         <tr>
           <Th>Producto</Th>
           <Th className="sale-col-qty">Cantidad</Th>
-          <Th numeric className="sale-col-price">Precio</Th>
+          <Th numeric className="sale-col-price">{priceLabel}</Th>
           <Th numeric className="sale-col-total">Total</Th>
           <Th className="sale-col-del"><span className="ui-sr-only">Quitar</span></Th>
         </tr>
@@ -54,7 +55,7 @@ export const CartTable = memo(function CartTable({ items, selectedId, onSelect, 
             <Tr key={item.id} interactive selected={item.id === selectedId} onClick={() => onSelect(item.id)} ref={item.id === selectedId ? selectedRow : undefined}>
               <Td label="Producto" className="sale-col-name"><span className="sale-name">{item.product_name}</span>{item.manual_kind && <span className="sale-manual">{MANUAL_LABEL[item.manual_kind]}</span>}</Td>
               <Td className="sale-col-qty"><QtyStepper value={quantity} label={item.product_name} onChange={next => onChange(item.id, next)} /></Td>
-              <Td numeric muted label="Precio" className="sale-col-price">{money.format(Number(item.unit_price))}</Td>
+              <Td numeric muted label={priceLabel} className="sale-col-price">{money.format(Number(item.unit_price))}</Td>
               <Td numeric label="Total" className="sale-col-total"><strong key={item.line_total} className="sale-tick">{money.format(Number(item.line_total))}</strong></Td>
               <Td className="sale-col-del">
                 <TouchButton variant="ghost" iconOnly icon={Trash2} label={`Quitar ${item.product_name}`} className="sale-del" onClick={event => { event.stopPropagation(); onChange(item.id, 0); }} />

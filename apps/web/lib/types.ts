@@ -31,7 +31,7 @@ export type GranelSettlement = "EXTERNAL_SCALE" | "POS";
 export type ExternalItem = { kind: string; settlement: string; description: string; quantity: string; unit_price: string; amount: string };
 /** The "Factura electrónica" checkbox sent with COBRAR (absent = no invoice). Consumidor final is never typed. */
 export type ElectronicInvoiceIntent = { recipient: "FINAL_CONSUMER" } | { recipient: "CUSTOMER"; customer_id: string };
-export type Product = { id: string; barcode: string | null; name: string; sale_price: string; stock: string };
+export type Product = { id: string; barcode: string | null; name: string; sale_price: string; unit_cost: string; stock: string };
 export type InventoryProduct = { id: string; barcode: string | null; name: string; sale_price: string; unit_cost: string; last_purchase_cost: string | null; estimated_margin_percent: string | null; current_stock: string; supplier: string | null; supplier_id: string | null; category: string | null; category_id: string | null; minimum_stock: number; unit: string; active: boolean; description: string | null };
 export type InventoryMovement = { id: string; product_id: string; product_name: string; movement_type: "INITIAL_STOCK" | "PURCHASE" | "SALE" | "RETURN" | "DAMAGE" | "ADJUSTMENT" | "INTERNAL_CONSUMPTION" | "EXCHANGE_OUT"; quantity: string; unit_cost: string | null; reference_id: string | null; reason: string | null; created_at: string; user_id: string | null };
 export type InventoryDetail = InventoryProduct & { recent_movements: InventoryMovement[] };
@@ -79,6 +79,8 @@ export type InventoryValuation = { status?: "LIVE" | "SNAPSHOT" | "NO_SNAPSHOT";
 export type OperationalCategory = { id: string; code: string; name: string; active: boolean; display_order: number };
 export type Expense = { id: string; amount: string; category: string; description: string; payment_source: PaymentGroup; payment_channel_id: string | null; channel_name: string | null; notes: string | null; created_at: string; created_by: string };
 export type InternalConsumption = { id: string; product_id: string | null; product_name: string | null; description: string; quantity: string | null; unit_cost: string | null; reference_sale_price: string | null; cost_total: string; sale_value_total: string | null; estimated_value: string | null; notes: string | null; created_at: string; created_by: string };
+export type InternalConsumptionItem = { id: string; product_id: string; product_name: string; quantity: string; unit_cost: string; reference_sale_price: string; cost_total: string; sale_value_total: string };
+export type InternalConsumptionBatch = InternalConsumption & { items: InternalConsumptionItem[] };
 export type OperationalWindowStatus = "OPEN" | "CLOSED" | "NONE" | "CUSTOM";
 export type DailyOperationsSummary = { returns?: ReturnsBlock | null; exchanges?: ExchangesBlock | null; date_from: string; date_to: string; session_status: OperationalWindowStatus; sales_total: string; external_scale_total?: string; categories: { category_code: string; category_name: string; cash: string; electronic: string; other: string; total: string; channels: { channel_id: string; channel_name: string; payment_group: PaymentGroup; amount: string }[] }[]; outgoing: { expenses_total: string; expenses_cash: string; expenses_electronic: string; expenses_other: string; internal_consumption_cost: string; internal_consumption_estimated: string; home_withdrawals: string; other_withdrawals: string } };
 

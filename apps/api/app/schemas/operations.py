@@ -108,6 +108,44 @@ class InternalConsumptionOut(BaseModel):
     created_by: UUID
 
 
+class InternalConsumptionItemIn(BaseModel):
+    product_id: UUID
+    quantity: Decimal = Field(gt=0, max_digits=12, decimal_places=3)
+
+
+class InternalConsumptionBatchIn(BaseModel):
+    items: list[InternalConsumptionItemIn] = Field(min_length=1, max_length=100)
+    notes: str | None = Field(default=None, max_length=500)
+    idempotency_key: str = Field(min_length=8, max_length=80)
+
+    @field_validator("notes")
+    @classmethod
+    def strip_notes(cls, value: str | None):
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def unique_products(self):
+        if len({item.product_id for item in self.items}) != len(self.items):
+            raise ValueError("Un producto solo puede aparecer una vez en el consumo interno")
+        return self
+
+
+class InternalConsumptionItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    product_id: UUID
+    product_name: str
+    quantity: Decimal
+    unit_cost: Decimal
+    reference_sale_price: Decimal
+    cost_total: Decimal
+    sale_value_total: Decimal
+
+
+class InternalConsumptionBatchOut(InternalConsumptionOut):
+    items: list[InternalConsumptionItemOut] = Field(default_factory=list)
+
+
 class ChannelBreakdown(BaseModel):
     channel_id: UUID
     channel_name: str

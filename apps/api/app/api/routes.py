@@ -68,7 +68,8 @@ def products(q: str = Query(default="", max_length=100), db: Session = Depends(g
         term = f"%{q.strip()}%"
         stmt = stmt.where(or_(Product.barcode.in_(barcode_candidates(q)), Product.barcode.ilike(term),
                               Product.name.ilike(term)))
-    return [ProductOut(id=p.id, barcode=p.barcode, name=p.name, sale_price=p.sale_price, stock=s)
+    return [ProductOut(id=p.id, barcode=p.barcode, name=p.name, sale_price=p.sale_price,
+                       unit_cost=p.unit_cost, stock=s)
             for p, s in db.execute(stmt)]
 
 

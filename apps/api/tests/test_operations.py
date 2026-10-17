@@ -12,8 +12,8 @@ from app.core.db import Base, get_db
 from app.domain.enums import (CashMovementType, InventoryMovementType,
                               PaymentGroup, PaymentMethod)
 from app.main import app
-from app.models import (CashMovement, CashSession, Expense, InternalConsumption,
-                        InventoryMovement, OperationalCategory, PaymentChannel,
+from app.models import (CashMovement, CashSession, Expense, InternalConsumption, InternalConsumptionItem,
+                        InventoryMovement, OperationalCategory, Payment, PaymentChannel,
                         Product, Sale, User)
 from app.services.inventory import current_stock
 from app.services.pos import add_item, create_sale
@@ -179,6 +179,52 @@ def test_manual_internal_consumption_has_no_fake_inventory(operations_context):
         "idempotency_key":"home-manual-123"})
     assert response.status_code == 201 and response.json()["product_id"] is None
     assert db.scalar(select(func.count(InventoryMovement.id))) == before
+
+
+def test_internal_consumption_cart_is_atomic_idempotent_and_not_a_sale(operations_context):
+    db, client, products, _ = operations_context
+    sales_before = db.scalar(select(func.count(Sale.id)))
+    payments_before = db.scalar(select(func.count(Payment.id)))
+    cash_before = db.scalar(select(func.count(CashMovement.id)))
+    body = {"items": [{"product_id": str(products["super"].id), "quantity": "2"},
+                      {"product_id": str(products["cigarros"].id), "quantity": "3"}],
+            "notes": "Mercado de la casa", "idempotency_key": "home-cart-multi-123"}
+    first = client.post("/api/v1/internal-consumption/batch", json=body)
+    assert first.status_code == 201
+    again = client.post("/api/v1/internal-consumption/batch", json=body)
+    assert again.status_code == 201 and again.json()["id"] == first.json()["id"]
+    assert len(first.json()["items"]) == 2
+    assert Decimal(first.json()["cost_total"]) == Decimal("110000")
+    assert current_stock(db, products["super"].id) == Decimal("98")
+    assert current_stock(db, products["cigarros"].id) == Decimal("97")
+    consumption_id = UUID(first.json()["id"])
+    assert db.scalar(select(func.count(InternalConsumptionItem.id)).where(
+        InternalConsumptionItem.internal_consumption_id == consumption_id)) == 2
+    assert db.scalar(select(func.count(InventoryMovement.id)).where(
+        InventoryMovement.reference_id == consumption_id)) == 2
+    listed = client.get("/api/v1/internal-consumption").json()
+    assert listed[0]["id"] == first.json()["id"] and len(listed[0]["items"]) == 2
+    assert db.scalar(select(func.count(Sale.id))) == sales_before
+    assert db.scalar(select(func.count(Payment.id))) == payments_before
+    assert db.scalar(select(func.count(CashMovement.id))) == cash_before
+    summary = client.get("/api/v1/daily-operations/summary").json()
+    assert Decimal(summary["outgoing"]["internal_consumption_cost"]) == Decimal("110000")
+    assert Decimal(summary["sales_total"]) == Decimal("0")
+
+
+def test_internal_consumption_cart_insufficient_stock_rolls_back_every_line(operations_context):
+    db, client, products, _ = operations_context
+    before_consumptions = db.scalar(select(func.count(InternalConsumption.id)))
+    before_movements = db.scalar(select(func.count(InventoryMovement.id)))
+    response = client.post("/api/v1/internal-consumption/batch", json={
+        "items": [{"product_id": str(products["super"].id), "quantity": "1"},
+                  {"product_id": str(products["cigarros"].id), "quantity": "101"}],
+        "idempotency_key": "home-cart-insufficient-123"})
+    assert response.status_code == 409
+    assert current_stock(db, products["super"].id) == Decimal("100")
+    assert current_stock(db, products["cigarros"].id) == Decimal("100")
+    assert db.scalar(select(func.count(InternalConsumption.id))) == before_consumptions
+    assert db.scalar(select(func.count(InventoryMovement.id))) == before_movements
 
 
 def test_home_withdrawal_appears_in_casa_and_other_does_not(operations_context):

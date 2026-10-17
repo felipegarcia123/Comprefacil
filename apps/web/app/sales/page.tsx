@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Ban, FileText, Landmark, LoaderCircle, PenLine, Plus, User } from "lucide-react";
+import { Ban, FileText, Home, Landmark, LoaderCircle, PenLine, Plus, User } from "lucide-react";
 import { api } from "@/lib/api";
 import { MockHardwareService } from "@/lib/hardware";
 import { errorText, money } from "@/lib/format";
 import { onActivateSale, publishSalesContexts, saleLabel } from "@/lib/workContexts";
 import { useBreakpoint } from "@/lib/useBreakpoint";
-import type { BusinessAccount, CardType, Customer, ElectronicInvoiceIntent, PaymentChannel, Sale } from "@/lib/types";
+import type { BusinessAccount, CardType, Customer, ElectronicInvoiceIntent, Item, PaymentChannel, Product, Sale } from "@/lib/types";
 import { useOperationalSession } from "@/components/OperationalSessionProvider";
 import { ConfirmDialog, Display, InlineMessage, Sheet, Toldo, TouchButton, TouchTabs, type TouchTabItem } from "@/components/ui";
 import { CustomerPickerSheet } from "@/components/customers/CustomerPickerSheet";
@@ -27,10 +27,12 @@ const hardware = new MockHardwareService();
  * while ON — the sale's customer or Consumidor final. Choosing a customer never triggers an invoice. */
 type Draft = { channelId?: string; received?: string; mode?: PayMode; electronicInvoice?: boolean; recipient?: "FINAL_CONSUMER" | "CUSTOMER"; cardType?: CardType; accountId?: string };
 type Notice = { tone: "success" | "info" | "warning" | "danger"; text: string; change?: number; invoiceSaleId?: string };
+type ConsumptionItem = Item & { unit_cost: string; reference_sale_price: string };
+type ConsumptionCart = { id: string; idempotencyKey: string; items: ConsumptionItem[] };
 
 // Per-sale UI state (active tab, chosen channel, cash received) survives leaving /sales and coming back.
 const STORE_KEY = "pos.sales.ui.v1";
-type Stored = { activeId?: string; drafts?: Record<string, Draft>; lastSaleId?: string };
+type Stored = { activeId?: string; drafts?: Record<string, Draft>; lastSaleId?: string; consumption?: ConsumptionCart };
 function readStored(): Stored { try { return JSON.parse(sessionStorage.getItem(STORE_KEY) || "{}"); } catch { return {}; } }
 function writeStored(value: Stored) { try { sessionStorage.setItem(STORE_KEY, JSON.stringify(value)); } catch { /* storage may be unavailable */ } }
 
@@ -50,6 +52,7 @@ export default function SalesPage() {
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState("");
   const [sales, setSales] = useState<Sale[]>([]);
+  const [consumption, setConsumption] = useState<ConsumptionCart | null>(null);
   const [channels, setChannels] = useState<PaymentChannel[]>([]);
   const [accounts, setAccounts] = useState<BusinessAccount[]>([]);
   const [activeId, setActiveId] = useState("");
@@ -62,6 +65,7 @@ export default function SalesPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [consumptionConfirmOpen, setConsumptionConfirmOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [lastSaleId, setLastSaleId] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -69,14 +73,18 @@ export default function SalesPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const active = sales.find(sale => sale.id === activeId);
+  const consumptionActive = consumption?.id === activeId;
+  const cartItems = consumptionActive ? consumption!.items : active?.items ?? [];
   const activeRef = useRef<Sale | undefined>(undefined);
   const chargingRef = useRef(false);     // a second tap before React re-renders the disabled COBRAR
   const salesRef = useRef<Sale[]>([]);
   useEffect(() => { activeRef.current = active; salesRef.current = sales; });
 
-  const total = Number(active?.total ?? 0);
-  const itemCount = active?.items.length ?? 0;
-  const unitCount = active?.items.reduce((sum, item) => sum + Number(item.quantity), 0) ?? 0;
+  const total = consumptionActive
+    ? cartItems.reduce((sum, item) => sum + Number(item.line_total), 0)
+    : Number(active?.total ?? 0);
+  const itemCount = cartItems.length;
+  const unitCount = cartItems.reduce((sum, item) => sum + Number(item.quantity), 0);
   const draft = drafts[activeId] ?? {};
   // First decision: Efectivo vs the "Transferencia" umbrella = every active non-cash channel from the backend.
   const cashChannel = channels.find(item => item.affects_cash);
@@ -124,8 +132,8 @@ export default function SalesPage() {
     setSales(list);
     // Only keep UI drafts of sales that are still open (completed/cancelled ones would just accumulate).
     setDrafts(Object.fromEntries(Object.entries(stored.drafts ?? {}).filter(([id]) => list.some(sale => sale.id === id))));
-    setLastSaleId(stored.lastSaleId ?? "");
-    setActiveId(list.some(sale => sale.id === stored.activeId) ? stored.activeId! : list[0]?.id ?? "");
+    setLastSaleId(stored.lastSaleId ?? ""); setConsumption(stored.consumption ?? null);
+    setActiveId(stored.consumption?.id === stored.activeId || list.some(sale => sale.id === stored.activeId) ? stored.activeId! : list[0]?.id ?? "");
     setPhase("ready");
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -143,7 +151,7 @@ export default function SalesPage() {
   }, [phase, sales, activeId]);
   // A ContextBar chip for a sale can request activating it while this screen is already mounted (no navigation happens in that case).
   useEffect(() => onActivateSale(id => { if (sales.some(sale => sale.id === id)) { setActiveId(id); setSelectedId(""); } }), [sales]);
-  useEffect(() => { if (phase === "ready") writeStored({ activeId, drafts, lastSaleId }); }, [phase, activeId, drafts, lastSaleId]);
+  useEffect(() => { if (phase === "ready") writeStored({ activeId, drafts, lastSaleId, consumption: consumption ?? undefined }); }, [phase, activeId, drafts, lastSaleId, consumption]);
   useEffect(() => {
     if (!notice || notice.tone === "success") return;
     const timer = window.setTimeout(() => setNotice(null), 7000);
@@ -196,22 +204,95 @@ export default function SalesPage() {
       return false;
     } finally { refocus(); }
   }, [run, updateSale, refocus]);
-  const scan = useCallback((barcode: string) => addLine({ barcode }), [addLine]);
-  const pickProduct = useCallback((productId: string, label: string) => addLine({ productId, label }), [addLine]);
+  const scan = useCallback((barcode: string) => consumptionActive ? addConsumptionBarcode(barcode) : addLine({ barcode }), [consumptionActive, addLine]);
+  const pickProduct = useCallback((product: Product) => consumptionActive
+    ? Promise.resolve(addConsumptionProduct(product)) : addLine({ productId: product.id, label: product.name }), [consumptionActive, addLine]);
 
   const changeQuantity = useCallback(async (itemId: string, quantity: number) => {
+    if (consumptionActive) {
+      setSelectedId(quantity <= 0 ? "" : itemId);
+      setConsumption(current => current ? { ...current, items: quantity <= 0
+        ? current.items.filter(item => item.id !== itemId)
+        : current.items.map(item => item.id === itemId
+          ? { ...item, quantity: String(quantity), line_total: String(quantity * Number(item.unit_cost)), unit_price: item.unit_cost }
+          : item) } : current);
+      return;
+    }
     const sale = activeRef.current; if (!sale) return;
     setSelectedId(quantity <= 0 ? "" : itemId);
     setSales(current => current.map(item => item.id === sale.id ? optimistic(item, itemId, quantity) : item));
     try { await run(() => quantity <= 0 ? api.remove(sale.id, itemId) : api.quantity(sale.id, itemId, quantity), updateSale); }
     catch (error) { setNotice({ tone: "danger", text: errorText(error) }); await resync(); }
     finally { refocus(); }
-  }, [run, updateSale, resync, refocus]);
+  }, [consumptionActive, run, updateSale, resync, refocus]);
 
   async function newSale() {
     try { const sale = await api.createSale(); setSales(current => [...current, sale]); setActiveId(sale.id); setNotice(null); }
     catch (error) { setNotice({ tone: "danger", text: errorText(error) }); }
   }
+
+  function openConsumption() {
+    if (consumption) { setActiveId(consumption.id); setSelectedId(""); return; }
+    const id = `consumption-${crypto.randomUUID()}`;
+    setConsumption({ id, idempotencyKey: crypto.randomUUID(), items: [] });
+    setActiveId(id); setSelectedId(""); setNotice(null);
+  }
+
+  function discardConsumption() {
+    if (!consumption || busy) return;
+    const next = salesRef.current[0]?.id ?? "";
+    setConsumption(null); setActiveId(next); setSelectedId(""); setConsumptionConfirmOpen(false);
+  }
+
+  function addConsumptionProduct(product: Product): boolean {
+    if (!consumptionActive) return false;
+    setConsumption(current => {
+      if (!current) return current;
+      const found = current.items.find(item => item.product_id === product.id);
+      const items = found
+        ? current.items.map(item => item.product_id === product.id
+          ? { ...item, quantity: String(Number(item.quantity) + 1), line_total: String((Number(item.quantity) + 1) * Number(item.unit_cost)), unit_price: product.unit_cost }
+          : item)
+        : [...current.items, { id: product.id, product_id: product.id, product_name: product.name,
+          quantity: "1", unit_price: product.unit_cost, unit_cost: product.unit_cost,
+          reference_sale_price: product.sale_price, line_total: product.unit_cost, manual_kind: null }];
+      return { ...current, items };
+    });
+    return true;
+  }
+
+  async function addConsumptionBarcode(barcode: string): Promise<boolean> {
+    try {
+      const found = await api.search(barcode);
+      const product = found.find(item => item.barcode === barcode) ?? (found.length === 1 ? found[0] : undefined);
+      if (!product) { setNotice({ tone: "danger", text: `No se encontró un producto para el código ${barcode}` }); return false; }
+      return addConsumptionProduct(product);
+    } catch (error) { setNotice({ tone: "danger", text: errorText(error) }); return false; }
+  }
+
+  async function registerConsumption() {
+    if (!consumption || !consumption.items.length || busy) return;
+    setBusy(true); setNotice(null);
+    try {
+      await api.createInternalConsumptionBatch({
+        items: consumption.items.map(item => ({ product_id: item.product_id!, quantity: Number(item.quantity) })),
+        idempotency_key: consumption.idempotencyKey,
+      });
+      const next = salesRef.current[0]?.id ?? "";
+      setConsumption(null); setActiveId(next); setSelectedId(""); setConsumptionConfirmOpen(false);
+      setNotice({ tone: "success", text: "Consumo interno registrado. El inventario fue actualizado." });
+    } catch (error) {
+      // Keep the cart and its idempotency key: an uncertain response can be retried safely.
+      setNotice({ tone: "danger", text: errorText(error) });
+    } finally { setBusy(false); }
+  }
+
+  useEffect(() => {
+    if (phase !== "ready" || consumption || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("consumption") === "1") openConsumption();
+  // The URL action is intentionally consumed once; the created cart makes subsequent renders no-ops.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, consumption]);
 
   /** Cancel = close this OPEN sale without charging (status CANCELLED in the backend; lines are kept there, nothing else moves). */
   async function cancelCurrentSale() {
@@ -299,7 +380,10 @@ export default function SalesPage() {
   }
 
   // ---- render -------------------------------------------------------------------------------------------
-  const tabs = useMemo<TouchTabItem[]>(() => sales.map((sale, index) => ({ id: sale.id, label: `Venta ${index + 1}`, sub: money.format(Number(sale.total)), module: "ventas" })), [sales]);
+  const tabs = useMemo<TouchTabItem[]>(() => [
+    ...sales.map((sale, index) => ({ id: sale.id, label: `Venta ${index + 1}`, sub: money.format(Number(sale.total)), module: "ventas" as const })),
+    ...(consumption ? [{ id: consumption.id, label: "Casa / consumo interno", sub: money.format(consumption.items.reduce((sum, item) => sum + Number(item.line_total), 0)), module: "caja" as const }] : []),
+  ], [sales, consumption]);
 
   if (phase === "loading") {
     return <main className="sale sale-status-page" data-module="ventas"><Toldo module="ventas" /><div className="sale-status" role="status"><LoaderCircle className="ui-btn__spin" size={32} aria-hidden="true" />Cargando ventas…</div></main>;
@@ -354,12 +438,15 @@ export default function SalesPage() {
         <TouchTabs
           ariaLabel="Ventas abiertas" items={tabs} value={activeId}
           onChange={id => { setActiveId(id); setSelectedId(""); }}
-          trailing={<button type="button" className="ui-tab ui-tab--action sale-new" onClick={() => void newSale()} disabled={busy}><span className="ui-tab__body"><Plus size={24} aria-hidden="true" />Nueva</span></button>}
+          trailing={<div className="sale-tab-actions">
+            <button type="button" className="ui-tab ui-tab--action sale-new" onClick={() => void newSale()} disabled={busy}><span className="ui-tab__body"><Plus size={24} aria-hidden="true" />Nueva</span></button>
+            <button type="button" className="ui-tab ui-tab--action sale-consumption" onClick={openConsumption} disabled={busy}><span className="ui-tab__body"><Home size={21} aria-hidden="true" />Casa / consumo interno</span></button>
+          </div>}
         />
       </div>
 
       <div className="sale__body">
-        <section className="sale__main" aria-label="Venta activa">
+        <section className="sale__main" aria-label={consumptionActive ? "Consumo interno activo" : "Venta activa"}>
           <ScanBar disabled={busy} inputRef={inputRef} onScan={scan} onPick={pickProduct} notify={text => setNotice({ tone: "warning", text })} />
           {cajaClosed && (
             <InlineMessage tone="warning" title="La caja está cerrada" actions={<Link href="/cash" data-module="caja" className="ui-btn ui-btn--secondary ui-btn--md">Abrir caja</Link>}>
@@ -378,25 +465,37 @@ export default function SalesPage() {
               </span>
             </InlineMessage>
           )}
+          {consumptionActive && <InlineMessage tone="info" title="Consumo interno">
+            Se descuenta inventario al confirmar. No genera venta, pago, ingreso ni movimiento de caja.
+          </InlineMessage>}
           <div className="sale__cart">
-            {itemCount ? <CartTable items={active!.items} selectedId={selectedId} onSelect={setSelectedId} onChange={changeQuantity} /> : <EmptyCart />}
+            {itemCount ? <CartTable items={cartItems} selectedId={selectedId} onSelect={setSelectedId} onChange={changeQuantity} priceLabel={consumptionActive ? "Costo" : undefined} /> : <EmptyCart />}
           </div>
           <div className="sale-foot">
+            {consumptionActive ? <>
+              <span className="sale-client"><Home size={20} aria-hidden="true" />Costo contable {money.format(total)}</span>
+              <TouchButton variant="ghost" icon={Ban} className="sale-del" disabled={busy} onClick={discardConsumption}>Descartar consumo</TouchButton>
+            </> : <>
             {/* "Producto manual" adds a cart line (no payment): it lives with the cart, reachable without opening Cobrar. */}
             <TouchButton variant="secondary" icon={PenLine} onClick={() => setManualOpen(true)} disabled={busy || !cajaOpen}>Producto manual</TouchButton>
             <span className="sale-client"><User size={20} aria-hidden="true" />{customer ? customer.name : "Consumidor final"}</span>
             {invoiceConfigured && lastSaleId && <TouchButton variant="ghost" icon={FileText} onClick={() => setInvoiceOpen(true)}>Factura de la última venta</TouchButton>}
             <TouchButton variant="ghost" icon={Ban} className="sale-del" disabled={busy || (sales.length === 1 && !itemCount)} onClick={() => (itemCount ? setCancelOpen(true) : void cancelCurrentSale())}>Cancelar venta</TouchButton>
+            </>}
           </div>
         </section>
 
-        {wide && <section className="sale__panel" aria-label="Cobro">{panel("dock")}</section>}
+        {wide && <section className="sale__panel" aria-label={consumptionActive ? "Registro de consumo interno" : "Cobro"}>
+          {consumptionActive ? <div className="sale-consumption-panel"><Display size="figure" label="Costo total" value={money.format(total)} caption={`${itemCount} ${itemCount === 1 ? "producto" : "productos"}`} tickKey={total} live />
+            {consumption!.items.some(item => Number(item.unit_cost) === 0) && <InlineMessage tone="warning">Hay productos sin costo registrado. Se contabilizarán a $0.</InlineMessage>}
+            <TouchButton size="cta" module="caja" disabled={!itemCount || busy} onClick={() => setConsumptionConfirmOpen(true)}>Registrar consumo interno</TouchButton></div> : panel("dock")}
+        </section>}
       </div>
 
       {!wide && (
         <div className="sale__dock">
-          <Display size="figure" label="Total" value={money.format(total)} caption={`${itemCount} ${itemCount === 1 ? "producto" : "productos"}`} tickKey={total} live />
-          <TouchButton size="cta" module="ventas" disabled={!itemCount || busy} onClick={() => setPayOpen(true)}>COBRAR</TouchButton>
+          <Display size="figure" label={consumptionActive ? "Costo total" : "Total"} value={money.format(total)} caption={`${itemCount} ${itemCount === 1 ? "producto" : "productos"}`} tickKey={total} live />
+          <TouchButton size="cta" module={consumptionActive ? "caja" : "ventas"} disabled={!itemCount || busy} onClick={() => consumptionActive ? setConsumptionConfirmOpen(true) : setPayOpen(true)}>{consumptionActive ? "Registrar consumo interno" : "COBRAR"}</TouchButton>
         </div>
       )}
       <Sheet open={!wide && payOpen} title="Cobrar" persistent module="ventas" onClose={() => setPayOpen(false)}>{!wide && payOpen && panel("sheet")}</Sheet>
@@ -416,6 +515,10 @@ export default function SalesPage() {
       )}
       <ConfirmDialog open={cancelOpen} module="ventas" tone="danger" title="Cancelar esta venta" confirmLabel="Cancelar venta" cancelLabel="Volver" busy={busy} onCancel={() => setCancelOpen(false)} onConfirm={() => void cancelCurrentSale()}>
         Los productos de esta venta se descartarán. No se cobra ni se mueve el inventario.
+      </ConfirmDialog>
+      <ConfirmDialog open={consumptionConfirmOpen} module="caja" tone="primary" title="Registrar consumo interno" confirmLabel="Registrar consumo interno" cancelLabel="Volver" busy={busy} onCancel={() => setConsumptionConfirmOpen(false)} onConfirm={() => void registerConsumption()}>
+        Se descontarán {unitCount} unidades del inventario por un costo contable de {money.format(total)}. Esta operación no genera una venta ni mueve efectivo.
+        {consumption?.items.some(item => Number(item.unit_cost) === 0) ? " Hay productos sin costo registrado y se contabilizarán a $0." : ""}
       </ConfirmDialog>
       <CustomerPickerSheet
         open={pickerOpen} selectedId={customer?.id}

@@ -399,10 +399,31 @@ class InternalConsumption(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     idempotency_key: Mapped[str] = mapped_column(String(80), unique=True)
     product: Mapped[Product | None] = relationship(lazy="joined")
+    # Legacy/manual entries keep their single product fields above.  A cart-based
+    # consumption is one header with immutable item snapshots below.
+    items: Mapped[list["InternalConsumptionItem"]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin", order_by="InternalConsumptionItem.id")
 
     @property
     def product_name(self) -> str | None:
         return self.product.name if self.product else None
+
+
+class InternalConsumptionItem(Base):
+    __tablename__ = "internal_consumption_items"
+    __table_args__ = (UniqueConstraint("internal_consumption_id", "product_id",
+                                       name="uq_internal_consumption_item_product"),)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    internal_consumption_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internal_consumptions.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id"), index=True)
+    # These are snapshots: catalog edits after the withdrawal never alter its audit trail.
+    product_name: Mapped[str] = mapped_column(String(240))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    reference_sale_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    cost_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    sale_value_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
 
 
 class DailyReport(Base):

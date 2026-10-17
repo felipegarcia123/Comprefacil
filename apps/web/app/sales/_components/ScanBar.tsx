@@ -14,8 +14,8 @@ type Props = {
   inputRef: RefObject<HTMLInputElement | null>;
   /** Scanner path: adds a scanned/typed code to the active sale. Resolves true when the line was added. */
   onScan: (barcode: string) => Promise<boolean>;
-  /** Manual pick from the name search: always by product_id (works with or without barcode). */
-  onPick: (productId: string, label: string) => Promise<boolean>;
+  /** Manual pick from the name search; callers receive the catalog snapshot they need for their cart. */
+  onPick: (product: Product) => Promise<boolean>;
   notify: (text: string) => void;
 };
 
@@ -34,7 +34,7 @@ export function ScanBar({ disabled, inputRef, onScan, onPick, notify }: Props) {
 
   async function pick(product: Product) {
     setQuery(""); setResults([]);
-    await onPick(product.id, product.name);
+    await onPick(product);
   }
 
   async function submit(raw: string) {

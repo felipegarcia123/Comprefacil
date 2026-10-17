@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models import Expense, InternalConsumption, OperationalCategory, Product
 from app.schemas.operations import (DailyOperationsSummary, ExpenseIn, ExpenseOut,
+                                    InternalConsumptionBatchIn, InternalConsumptionBatchOut,
                                     InternalConsumptionIn, InternalConsumptionOut,
                                     ManualSaleIn, OperationalCategoryOut,
                                     ProductCategoryIn)
 from app.schemas.pos import SaleOut
-from app.services.operations import (create_expense, create_internal_consumption,
+from app.services.operations import (create_expense, create_internal_consumption, create_internal_consumption_batch,
                                      create_manual_sale, daily_summary,
                                      resolve_operational_window)
 
@@ -66,7 +67,13 @@ def add_consumption(body: InternalConsumptionIn, db: Session = Depends(get_db)):
     return create_internal_consumption(db, body)
 
 
-@router.get("/internal-consumption", response_model=list[InternalConsumptionOut])
+@router.post("/internal-consumption/batch", response_model=InternalConsumptionBatchOut, status_code=201)
+def add_consumption_batch(body: InternalConsumptionBatchIn, db: Session = Depends(get_db)):
+    """One idempotent inventory-only withdrawal; it never creates a Sale, Payment or CashMovement."""
+    return create_internal_consumption_batch(db, body)
+
+
+@router.get("/internal-consumption", response_model=list[InternalConsumptionBatchOut])
 def consumptions(date_from: datetime | None = None, date_to: datetime | None = None,
                  db: Session = Depends(get_db)):
     stmt = select(InternalConsumption)

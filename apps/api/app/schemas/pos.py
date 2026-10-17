@@ -14,6 +14,7 @@ class ProductOut(BaseModel):
     barcode: str | None
     name: str
     sale_price: Decimal
+    unit_cost: Decimal
     stock: Decimal
 
 

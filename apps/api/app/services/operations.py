@@ -13,12 +13,12 @@ from app.services.effective_payments import effective_channel_id_column
 from app.domain.enums import (CashMovementType, ExpensePaymentSource,
                               InventoryMovementType, PaymentGroup, PaymentMethod,
                               SaleSource, SaleStatus, WithdrawalReason)
-from app.models import (CashMovement, CashSession, Expense, InternalConsumption,
+from app.models import (CashMovement, CashSession, Expense, InternalConsumption, InternalConsumptionItem,
                         InventoryMovement, OperationalCategory, Payment,
                         PaymentChannel, Product, Sale, SaleExternalItem, SaleItem)
 from app.schemas.operations import (CategorySummary, ChannelBreakdown,
                                     DailyOperationsSummary, ExchangesSummary, ReturnCategoryAmount, ReturnsSummary, ExpenseIn,
-                                    InternalConsumptionIn, ManualSaleIn,
+                                    InternalConsumptionBatchIn, InternalConsumptionIn, ManualSaleIn,
                                     OutgoingSummary)
 from app.services.cash import current_session
 from app.services.inventory import current_stock
@@ -179,6 +179,64 @@ def create_internal_consumption(db: Session, body: InternalConsumptionIn) -> Int
                 quantity=-body.quantity, unit_cost=product.unit_cost,
                 reference_id=consumption.id, reason=body.notes or body.description,
                 user_id=user.id))
+        db.commit(); db.refresh(consumption)
+        return consumption
+    except IntegrityError:
+        db.rollback()
+        previous = db.scalar(select(InternalConsumption).where(
+            InternalConsumption.idempotency_key == body.idempotency_key))
+        if previous:
+            return previous
+        raise
+    except Exception:
+        db.rollback(); raise
+
+
+def create_internal_consumption_batch(db: Session, body: InternalConsumptionBatchIn) -> InternalConsumption:
+    """Withdraw several catalog products as one inventory-only, idempotent operation.
+
+    The header is the durable idempotency boundary and every inventory ledger row
+    points at it. Product rows are locked in a stable order before stock is read,
+    so either every line commits or no line does.
+    """
+    require_open_session(db, lock=True)
+    previous = db.scalar(select(InternalConsumption).where(
+        InternalConsumption.idempotency_key == body.idempotency_key))
+    if previous:
+        return previous
+    try:
+        user = get_operator(db)
+        product_ids = sorted((item.product_id for item in body.items), key=str)
+        products = db.scalars(select(Product).where(Product.id.in_(product_ids))
+                              .order_by(Product.id).with_for_update(of=Product)).all()
+        by_id = {product.id: product for product in products}
+        if len(by_id) != len(product_ids):
+            raise HTTPException(404, "Uno o más productos no existen")
+        for line in body.items:
+            product = by_id[line.product_id]
+            if current_stock(db, product.id) < line.quantity:
+                raise HTTPException(409, f"Stock insuficiente para {product.name}")
+
+        consumption = InternalConsumption(
+            description="Casa / consumo interno", cost_total=ZERO, sale_value_total=ZERO,
+            notes=body.notes, created_by=user.id, idempotency_key=body.idempotency_key)
+        db.add(consumption)
+        for line in body.items:
+            product = by_id[line.product_id]
+            cost_total = product.unit_cost * line.quantity
+            sale_total = product.sale_price * line.quantity
+            consumption.cost_total += cost_total
+            consumption.sale_value_total += sale_total
+            consumption.items.append(InternalConsumptionItem(
+                product_id=product.id, product_name=product.name, quantity=line.quantity,
+                unit_cost=product.unit_cost, reference_sale_price=product.sale_price,
+                cost_total=cost_total, sale_value_total=sale_total))
+        db.flush()
+        for line in consumption.items:
+            db.add(InventoryMovement(
+                product_id=line.product_id, movement_type=InventoryMovementType.INTERNAL_CONSUMPTION,
+                quantity=-line.quantity, unit_cost=line.unit_cost, reference_id=consumption.id,
+                reason=body.notes or consumption.description, user_id=user.id))
         db.commit(); db.refresh(consumption)
         return consumption
     except IntegrityError:

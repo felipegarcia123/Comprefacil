@@ -607,6 +607,27 @@ def test_36_block1_math_intact_and_returns_shown_apart(ctx):
     assert Decimal(after["returns_cash_total"]) == Decimal("1000")
 
 
+def test_bulto_returns_use_the_same_reporting_category_without_changing_totals(ctx):
+    db, client, fake, product, channels, settings = ctx
+    manual_categories(db)
+    sale = sell(client, db, channels, [("manual", "BULTO", 5000)], cash(5000))
+    item = lines_of(client, sale.id)[0]
+    assert item["manual_kind"] == "BULTO" and item["category_code"] == "MASCOTAS_SIN_CODIGO"
+    before = summary(client)
+    assert Decimal(before["sales_total"]) == Decimal("5000")
+
+    returned = do_return(client, sale.id, [(item["id"], 1, False)])
+    assert returned.status_code == 201
+    after = summary(client)
+    by_category = {row["category_code"]: Decimal(row["amount"]) for row in after["returns"]["by_category"]}
+    assert by_category == {"BULTOS": Decimal("5000")}
+    assert Decimal(after["returns"]["refunded_total"]) == Decimal("5000")
+    reconciliation = recon(client)
+    cash_by_category = {row["category_code"]: Decimal(row["amount"])
+                        for row in reconciliation["returns_cash_by_category"]}
+    assert cash_by_category["BULTOS"] == Decimal("5000")
+
+
 # ---- 37-38. electronic invoice safety --------------------------------------------------------------------
 
 @pytest.mark.parametrize("status", [ElectronicInvoiceStatus.PENDING, ElectronicInvoiceStatus.PROCESSING,

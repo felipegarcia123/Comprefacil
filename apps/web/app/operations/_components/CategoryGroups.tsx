@@ -5,7 +5,7 @@ type CategoryRow = DailyOperationsSummary["categories"][number];
 
 // Fixed presentation order for the business's operating groups, independent of
 // OperationalCategory.display_order (a seed-time default, not a UX decision).
-const GROUP_ORDER = ["CIGARROS", "LICORES", "MASCOTAS_CON_CODIGO", "MASCOTAS_SIN_CODIGO", "SUPER"];
+const GROUP_ORDER = ["CIGARROS", "LICORES", "MASCOTAS_CON_CODIGO", "MASCOTAS_SIN_CODIGO", "BULTOS", "SUPER"];
 const ZERO_ROW = { cash: "0", electronic: "0", other: "0", total: "0", channels: [] as CategoryRow["channels"] };
 
 export function groupRows(summary: DailyOperationsSummary | null, categories: OperationalCategory[]) {

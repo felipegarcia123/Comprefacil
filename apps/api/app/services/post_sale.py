@@ -1144,6 +1144,7 @@ def returns_summary(db: Session, date_from: datetime, date_to: datetime) -> dict
     proportional rule as the daily summary; granel lines never get cash (POS granel is paid
     electronically)."""
     from app.services.operations import _allocate
+    from app.services.reporting_categories import reporting_category
     returns = db.scalars(select(SaleReturn).where(SaleReturn.created_at >= date_from,
                                                   SaleReturn.created_at <= date_to)).all()
     total = cash = electronic_done = electronic_pending = ZERO
@@ -1155,12 +1156,18 @@ def returns_summary(db: Session, date_from: datetime, date_to: datetime) -> dict
         voids += sale_return.kind == "VOID"
         sale = db.get(Sale, sale_return.sale_id)
         items = {item.id: item for item in sale.items}
+        replacements = {line.id: line for exchange in _exchanges(db, sale.id) for line in exchange.replacements}
         categories: dict[str, Decimal] = defaultdict(lambda: ZERO)
         for line in sale_return.lines:
-            by_category[line.category_code] += line.amount
             item = items.get(line.sale_item_id) if line.sale_item_id else None
+            replacement = replacements.get(line.source_replacement_line_id) if line.source_replacement_line_id else None
+            code = reporting_category(
+                line.category_code,
+                manual_kind=item.manual_kind if item is not None else (replacement.manual_kind if replacement else None),
+                sale_source=sale.source if item is not None else None)
+            by_category[code] += line.amount
             if item is None or not _is_granel(sale, item):
-                categories[line.category_code] += line.amount
+                categories[code] += line.amount
         return_cash = ZERO
         for refund in sale_return.refunds:
             if refund.affects_cash:

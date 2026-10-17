@@ -15,6 +15,7 @@ from app.schemas.reports import (DashboardReport, ReportCategory, ReportChannel,
                                  ReportPaymentGroup, ReportPeriod, ReportSummary,
                                  TimePoint, TopProduct)
 from app.services.operations import ZERO, _allocate
+from app.services.reporting_categories import reporting_category, reporting_category_name
 
 ZONE = ZoneInfo("America/Bogota")
 CENT = Decimal("0.01")
@@ -89,10 +90,12 @@ def _series(db,start,end,granularity,now=None):
 
 
 def _categories(db,start,end,total_sales):
-    item_rows=db.execute(select(SaleItem.sale_id,Sale.total,SaleItem.category_code,func.sum(SaleItem.line_total)).join(Sale,Sale.id==SaleItem.sale_id).where(
-        Sale.status==SaleStatus.COMPLETED,Sale.completed_at>=start,Sale.completed_at<=end).group_by(SaleItem.sale_id,Sale.total,SaleItem.category_code)).all()
+    item_rows=db.execute(select(SaleItem.sale_id,Sale.total,SaleItem.category_code,SaleItem.manual_kind,Sale.source,func.sum(SaleItem.line_total)).join(Sale,Sale.id==SaleItem.sale_id).where(
+        Sale.status==SaleStatus.COMPLETED,Sale.completed_at>=start,Sale.completed_at<=end).group_by(SaleItem.sale_id,Sale.total,SaleItem.category_code,SaleItem.manual_kind,Sale.source)).all()
     cats=defaultdict(dict); totals={}
-    for sid,total,code,amount in item_rows: cats[sid][code or "SIN_CLASIFICAR"]=Decimal(amount);totals[sid]=Decimal(total)
+    for sid,total,code,manual_kind,source,amount in item_rows:
+        code=reporting_category(code,manual_kind=manual_kind,sale_source=source)
+        cats[sid][code]=cats[sid].get(code,ZERO)+Decimal(amount);totals[sid]=Decimal(total)
     aggregate=defaultdict(lambda:defaultdict(Decimal))
     payments=db.execute(select(Payment.sale_id,Payment.amount,PaymentChannel.payment_group).join(PaymentChannel,PaymentChannel.id==effective_channel_id_column()).join(Sale,Sale.id==Payment.sale_id).where(
         Sale.status==SaleStatus.COMPLETED,Sale.completed_at>=start,Sale.completed_at<=end)).all()
@@ -100,7 +103,7 @@ def _categories(db,start,end,total_sales):
         for code,value in _allocate(Decimal(amount),cats.get(sid,{}),totals.get(sid,ZERO)).items(): aggregate[code][group.value]+=value
     names={x.code:x.name for x in db.scalars(select(OperationalCategory))}; result=[]
     for code,data in aggregate.items():
-        total=sum(data.values(),ZERO);result.append(ReportCategory(code=code,name=names.get(code,code),cash=data["CASH"],electronic=data["ELECTRONIC"],other=data["OTHER"],total=total,percentage=(total/total_sales*100).quantize(Decimal("0.1")) if total_sales else ZERO))
+        total=sum(data.values(),ZERO);result.append(ReportCategory(code=code,name=reporting_category_name(code,names),cash=data["CASH"],electronic=data["ELECTRONIC"],other=data["OTHER"],total=total,percentage=(total/total_sales*100).quantize(Decimal("0.1")) if total_sales else ZERO))
     return sorted(result,key=lambda x:x.total,reverse=True)
 
 

@@ -1100,7 +1100,9 @@ def test_m8_report_manual_super_in_super_and_granel_bulto_in_mascotas_sin_codigo
     now = datetime.now(timezone.utc)
     summary = daily_summary(db, now - timedelta(hours=1), now + timedelta(hours=1))
     totals = {c.category_code: c.total for c in summary.categories}
-    assert totals == {"SUPER": Decimal("500"), "MASCOTAS_SIN_CODIGO": Decimal("98000")}
+    assert totals == {"SUPER": Decimal("500"), "MASCOTAS_SIN_CODIGO": Decimal("8000"),
+                      "BULTOS": Decimal("90000")}
+    assert sum(totals.values()) == Decimal("98500")
 
 
 @pytest.mark.parametrize("payments,status", [
@@ -1489,7 +1491,8 @@ def test_r10_r11_r12_r20_block1_subtotal_380k(ctx):
     client.put(f"{API}/cash/sessions/{session.id}/scale-closing", json={"scale_total": "300000", "scale_digital": "80000"})
     data = recon(client)
     assert data["by"] == {"CIGARROS": Decimal("40000"), "MASCOTAS_CON_CODIGO": Decimal("35000"),
-                          "LICORES": Decimal("70000"), "MASCOTAS_SIN_CODIGO": Decimal("15000")}   # granel NOT re-added
+                          "LICORES": Decimal("70000"), "MASCOTAS_SIN_CODIGO": Decimal("5000"),
+                          "BULTOS": Decimal("10000")}   # granel NOT re-added
     assert Decimal(data["pos_cash_subtotal"]) == Decimal("160000")
     assert Decimal(data["block1_subtotal"]) == Decimal("380000")                                  # 220.000 + 160.000
     assert Decimal(data["observed"]["granel_external_scale"]) == Decimal("30000")                 # observed apart
@@ -1613,7 +1616,7 @@ def test_c1_c12_close_report_values_survive_and_reproduce_after_closing(ctx):
     assert first["scale"]["cash"] == "220000.00"
     by = {row["category_code"]: row["amount"] for row in first["pos_cash_by_category"]}
     assert by == {"CIGARROS": "40000.00", "MASCOTAS_CON_CODIGO": "35000.00", "LICORES": "70000.00",
-                  "MASCOTAS_SIN_CODIGO": "15000.00"}                         # SUPER absent; granel not re-added
+                  "MASCOTAS_SIN_CODIGO": "5000.00", "BULTOS": "10000.00"}  # SUPER absent; granel not re-added
     assert first["pos_cash_subtotal"] == "160000.00" and first["block1_subtotal"] == "380000.00"
     assert first["observed"]["granel_external_scale"] == "30000.00"           # shown apart
     assert Decimal(first["block1_subtotal"]) != session.closing_actual        # never the counted cash

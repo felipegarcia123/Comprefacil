@@ -126,6 +126,37 @@ def test_manual_sack_all_channels_and_cash_effect(operations_context, channel_na
     assert len(cash) == (1 if channel_name == "Efectivo" else 0)
 
 
+def test_bultos_are_split_in_summary_without_changing_total_or_manual_marker(operations_context):
+    db, client, _, channels = operations_context
+    # Historical manual sack: no manual_kind, so the immutable Sale.source is the marker.
+    sack = client.post("/api/v1/sales/manual", json={
+        "source": "MANUAL_SACK", "description": "Bulto histórico", "amount": "145000",
+        "channel_id": str(channels["Efectivo"].id), "idempotency_key": "summary-sack-123"})
+    assert sack.status_code == 201
+    # Current POS manual line: the persisted manual_kind is the marker.
+    sale = create_sale(db)
+    added = client.post(f"/api/v1/sales/{sale.id}/manual-items", json={
+        "kind": "BULTO", "description": "Bulto POS", "amount": "55000"})
+    assert added.status_code == 200
+    assert added.json()["items"][0]["manual_kind"] == "BULTO"
+    paid = client.post(f"/api/v1/sales/{sale.id}/checkout", json={"channel_id": str(channels["Nequi"].id)})
+    assert paid.status_code == 200
+    # A non-bulto line stored in the same legacy category stays there.
+    bulk = client.post("/api/v1/sales/manual", json={
+        "source": "MANUAL_BULK", "description": "Granel", "amount": "25000",
+        "channel_id": str(channels["Nequi"].id), "idempotency_key": "summary-bulk-123"})
+    assert bulk.status_code == 201
+
+    summary = client.get("/api/v1/daily-operations/summary").json()
+    rows = {row["category_code"]: row for row in summary["categories"]}
+    assert rows["BULTOS"]["category_name"] == "Bultos"
+    assert Decimal(rows["BULTOS"]["cash"]) == Decimal("145000")
+    assert Decimal(rows["BULTOS"]["electronic"]) == Decimal("55000")
+    assert Decimal(rows["BULTOS"]["total"]) == Decimal("200000")
+    assert Decimal(rows["MASCOTAS_SIN_CODIGO"]["electronic"]) == Decimal("25000")
+    assert sum(Decimal(row["total"]) for row in summary["categories"]) == Decimal(summary["sales_total"])
+
+
 def test_manual_inactive_channel_and_idempotency(operations_context):
     db, client, _, channels = operations_context
     channel = channels["Nequi"]

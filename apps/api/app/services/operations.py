@@ -24,6 +24,9 @@ from app.services.cash import current_session
 from app.services.inventory import current_stock
 from app.services.pos import get_operator, invoice_intent
 from app.services.operational_session import require_open_session
+from app.services.reporting_categories import (reporting_category,
+                                               reporting_category_name,
+                                               reporting_category_order)
 
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
@@ -294,14 +297,16 @@ def resolve_operational_window(db: Session, now: datetime | None = None) -> tupl
 def daily_summary(db: Session, date_from: datetime, date_to: datetime,
                   session_status: str = "CUSTOM") -> DailyOperationsSummary:
     item_rows = db.execute(select(
-        SaleItem.sale_id, Sale.total, SaleItem.category_code, func.sum(SaleItem.line_total))
+        SaleItem.sale_id, Sale.total, SaleItem.category_code, SaleItem.manual_kind, Sale.source,
+        func.sum(SaleItem.line_total))
         .join(Sale, Sale.id == SaleItem.sale_id)
         .where(Sale.status == SaleStatus.COMPLETED, Sale.completed_at >= date_from,
                Sale.completed_at <= date_to)
-        .group_by(SaleItem.sale_id, Sale.total, SaleItem.category_code)).all()
+        .group_by(SaleItem.sale_id, Sale.total, SaleItem.category_code, SaleItem.manual_kind, Sale.source)).all()
     sale_categories: dict = defaultdict(dict); sale_totals = {}
-    for sale_id, total, code, line_total in item_rows:
-        sale_categories[sale_id][code or "SIN_CLASIFICAR"] = Decimal(line_total)
+    for sale_id, total, code, manual_kind, source, line_total in item_rows:
+        code = reporting_category(code, manual_kind=manual_kind, sale_source=source)
+        sale_categories[sale_id][code] = sale_categories[sale_id].get(code, ZERO) + Decimal(line_total)
         sale_totals[sale_id] = Decimal(total)
     payment_rows = db.execute(select(
         Payment.sale_id, Payment.amount, PaymentChannel.id, PaymentChannel.name,
@@ -323,15 +328,17 @@ def daily_summary(db: Session, date_from: datetime, date_to: datetime,
             channel_meta[channel_id] = (channel_name, payment_group)
     categories = {row.code: row for row in db.scalars(
         select(OperationalCategory).order_by(OperationalCategory.display_order)).all()}
+    category_names = {code: row.name for code, row in categories.items()}
+    category_orders = {code: row.display_order for code, row in categories.items()}
     category_rows = [CategorySummary(
-        category_code=code, category_name=categories[code].name if code in categories else code,
+        category_code=code, category_name=reporting_category_name(code, category_names),
         cash=data["CASH"], electronic=data["ELECTRONIC"], other=data["OTHER"],
         total=data["total"], channels=[ChannelBreakdown(
             channel_id=channel_id, channel_name=channel_meta[channel_id][0],
             payment_group=channel_meta[channel_id][1], amount=amount)
             for channel_id, amount in data["channels"].items()])
         for code, data in sorted(aggregate.items(), key=lambda pair:
-            categories[pair[0]].display_order if pair[0] in categories else 999)]
+            reporting_category_order(pair[0], category_orders))]
     expense_rows = dict(db.execute(select(Expense.payment_source, func.sum(Expense.amount)).where(
         Expense.created_at >= date_from, Expense.created_at <= date_to)
         .group_by(Expense.payment_source)).all())

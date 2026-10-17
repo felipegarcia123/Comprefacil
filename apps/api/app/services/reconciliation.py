@@ -8,7 +8,7 @@ Three concepts are kept apart on purpose:
 Only BLOCK 1 of the real closing procedure is known so far:
 
     EFECTIVO_BASCULA  = scale_total - scale_digital      (from the scale's own closing, per cash session)
-  + cash of CIGARROS, MASCOTAS_CON_CODIGO, LICORES and MASCOTAS_SIN_CODIGO that is NOT granel
+  + cash of CIGARROS, MASCOTAS_CON_CODIGO, LICORES, MASCOTAS_SIN_CODIGO and BULTOS that is NOT granel
   = SUBTOTAL PARCIAL DEL CUADRE (block 1)
 
 It is NOT expected cash, a difference, a surplus or a shortage: the rest of the procedure is not
@@ -28,10 +28,11 @@ from app.domain.enums import PaymentMethod, SaleStatus
 from app.models import CashSession, CashSessionScaleClosing, PaymentChannel, Sale, SaleExternalItem
 from app.services.effective_payments import effective_channel_id_column, effective_channel_ids
 from app.services.operations import _allocate
+from app.services.reporting_categories import reporting_category
 
 ZERO = Decimal("0")
 # Order = how the business reads them. SUPER is intentionally absent (not part of block 1).
-BLOCK1_CATEGORIES = ("CIGARROS", "MASCOTAS_CON_CODIGO", "LICORES", "MASCOTAS_SIN_CODIGO")
+BLOCK1_CATEGORIES = ("CIGARROS", "MASCOTAS_CON_CODIGO", "LICORES", "MASCOTAS_SIN_CODIGO", "BULTOS")
 
 
 def _utc(value: datetime) -> datetime:
@@ -100,7 +101,9 @@ def pos_cash_by_category(db: Session, start: datetime, end: datetime) -> tuple[d
             if _is_granel(sale, line):
                 granel += line.line_total
             else:
-                categories[line.category_code or "SIN_CLASIFICAR"] += line.line_total
+                code = reporting_category(line.category_code, manual_kind=line.manual_kind,
+                                          sale_source=sale.source)
+                categories[code] += line.line_total
         cash = electronic = ZERO
         effective = effective_channel_ids(db, sale.payments)
         for payment in sale.payments:

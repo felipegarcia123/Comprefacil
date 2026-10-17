@@ -20,23 +20,23 @@ def report_context():
     engine=create_engine("sqlite://",connect_args={"check_same_thread":False},poolclass=StaticPool)
     Base.metadata.create_all(engine)
     with Session(engine,expire_on_commit=False) as db:
-        user=User(name="Admin"); cigar=OperationalCategory(code="CIGARROS",name="Cigarros"); supercat=OperationalCategory(code="SUPER",name="Super")
+        user=User(name="Admin"); cigar=OperationalCategory(code="CIGARROS",name="Cigarros"); supercat=OperationalCategory(code="SUPER",name="Super"); petcat=OperationalCategory(code="MASCOTAS_SIN_CODIGO",name="Mascotas sin código / Bultos")
         cash=PaymentChannel(name="Efectivo",payment_type=PaymentMethod.CASH,payment_group=PaymentGroup.CASH,affects_cash=True)
         nequi=PaymentChannel(name="Nequi",payment_type=PaymentMethod.TRANSFER,payment_group=PaymentGroup.ELECTRONIC)
         card=PaymentChannel(name="Datáfono",payment_type=PaymentMethod.CARD,payment_group=PaymentGroup.ELECTRONIC)
         p1=Product(barcode="P1",name="Cigarro",sale_price=100,unit_cost=50,operational_category_id=cigar.id)
         p2=Product(barcode="P2",name="Arroz",sale_price=100,unit_cost=60,operational_category_id=supercat.id)
-        db.add_all([user,cigar,supercat,cash,nequi,card,p1,p2]);db.flush()
+        db.add_all([user,cigar,supercat,petcat,cash,nequi,card,p1,p2]);db.flush()
         def sale(number,hour,minute,total,status=SaleStatus.COMPLETED,items=None,payments=None,source=SaleSource.POS_PRODUCT,day=9):
             row=Sale(number=number,status=status,source=source,created_by=user.id,total=Decimal(total),completed_at=datetime(2026,9,day,hour+5,minute,tzinfo=timezone.utc) if status==SaleStatus.COMPLETED else None)
             db.add(row);db.flush()
-            for product,code,name,qty,amount in items or []: db.add(SaleItem(sale_id=row.id,product_id=product.id if product else None,operational_category_id=cigar.id if code=="CIGARROS" else supercat.id,category_code=code,product_name=name,quantity=Decimal(qty),unit_price=Decimal(amount)/Decimal(qty),unit_cost=0,line_total=Decimal(amount)))
+            for product,code,name,qty,amount in items or []: db.add(SaleItem(sale_id=row.id,product_id=product.id if product else None,operational_category_id={"CIGARROS": cigar, "SUPER": supercat, "MASCOTAS_SIN_CODIGO": petcat}.get(code, supercat).id,category_code=code,product_name=name,quantity=Decimal(qty),unit_price=Decimal(amount)/Decimal(qty),unit_cost=0,line_total=Decimal(amount)))
             for channel,amount in payments or []: db.add(Payment(sale_id=row.id,method=channel.payment_type,payment_channel_id=channel.id,amount=Decimal(amount)))
             return row
         sale("A",10,15,100,items=[(p1,"CIGARROS","Cigarro",1,40),(p2,"SUPER","Arroz",2,60)],payments=[(cash,50),(nequi,50)])
         sale("B",10,37,200,items=[(p1,"CIGARROS","Cigarro",2,200)],payments=[(cash,200)])
         sale("C",10,59,300,items=[(p2,"SUPER","Arroz",3,300)],payments=[(card,300)])
-        sale("D",11,4,400,items=[(None,"SIN_CLASIFICAR","Venta manual",1,400)],payments=[(nequi,400)],source=SaleSource.MANUAL_SACK)
+        sale("D",11,4,400,items=[(None,"MASCOTAS_SIN_CODIGO","Venta manual",1,400)],payments=[(nequi,400)],source=SaleSource.MANUAL_SACK)
         sale("OPEN",10,1,999,status=SaleStatus.OPEN);sale("CANCEL",10,2,999,status=SaleStatus.CANCELLED)
         sale("PREV",10,1,500,items=[(p1,"CIGARROS","Cigarro",1,500)],payments=[(cash,500)],day=8)
         db.commit()
@@ -73,7 +73,7 @@ def test_mixed_payment_category_allocation(report_context):
     data=report(report_context);cats={x.code:x for x in data.categories}
     assert cats["CIGARROS"].cash==220 and cats["CIGARROS"].electronic==20
     assert cats["SUPER"].cash==30 and cats["SUPER"].electronic==330
-    assert cats["SIN_CLASIFICAR"].electronic==400
+    assert cats["BULTOS"].name == "Bultos" and cats["BULTOS"].electronic==400
     assert sum(x.total for x in data.categories)==data.summary.sales_total
 
 

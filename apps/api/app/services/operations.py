@@ -300,7 +300,7 @@ def daily_summary(db: Session, date_from: datetime, date_to: datetime,
     exchanged = exchanges_summary(db, date_from, date_to)
     returns = ReturnsSummary(
         gross_sales=sales_total, returns_total=returned["returns_total"],
-        net_sales=sales_total - returned["returns_total"], refunds_cash=returned["refunds_cash"],
+        net_sales=sales_total - returned["refunded_total"], refunds_cash=returned["refunds_cash"],
         refunds_electronic=returned["refunds_electronic"],
         refunds_electronic_pending=returned["refunds_electronic_pending"],
         return_count=returned["return_count"], void_count=returned["void_count"],
@@ -310,7 +310,7 @@ def daily_summary(db: Session, date_from: datetime, date_to: datetime,
         returns=returns,
         exchanges=ExchangesSummary(**{key: exchanged[key] for key in ExchangesSummary.model_fields}),
         date_from=date_from, date_to=date_to, session_status=session_status,
-        sales_total=sales_total, external_scale_total=external_scale_total, categories=category_rows,
+        sales_total=sales_total - returned["refunded_total"], external_scale_total=external_scale_total, categories=category_rows,
         outgoing=OutgoingSummary(
             expenses_total=cash_expenses + electronic_expenses + other_expenses,
             expenses_cash=cash_expenses, expenses_electronic=electronic_expenses,

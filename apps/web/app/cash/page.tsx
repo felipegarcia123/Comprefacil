@@ -165,8 +165,8 @@ function CashDashboardBody({ summary, onChanged, movesKey }: { summary: CashSumm
       </div>
 
       <div className="cash-columns">
-        <section className="cash-panel" aria-label="Total vendido, todos los canales">
-          <header className="cash-panel__head"><div><h2>Total vendido · todos los canales</h2><p>{summary.transaction_count} venta{summary.transaction_count === 1 ? "" : "s"}</p></div><b className="ui-num cash-panel__total cash-panel__total--neutral">{money.format(Number(summary.total_sales))}</b></header>
+        <section className="cash-panel" aria-label="Ventas netas, todos los canales">
+          <header className="cash-panel__head"><div><h2>Ventas netas · todos los canales</h2><p>{summary.transaction_count} venta{summary.transaction_count === 1 ? "" : "s"} · menos reembolsos confirmados</p></div><b className="ui-num cash-panel__total cash-panel__total--neutral">{money.format(Number(summary.total_sales))}</b></header>
           <ChannelList rows={summary.payment_channels} empty="Todavía no hay ventas en esta sesión." />
           <p className="cash-panel__footnote">Los canales digitales no forman parte del efectivo esperado.</p>
         </section>

@@ -27,7 +27,7 @@ export function JornadaReport({ report }: { report: ReportLike }) {
     <div className="reports-content">
       <div className="reports-period"><strong>{dateFull.format(new Date(report.opened_at))}</strong><small>{time.format(new Date(report.opened_at))} – {time.format(new Date(report.closed_at))}</small></div>
       <div className="ui-metric-grid">
-        <Kpi label={report.report_data.returns && Number(report.report_data.returns.returns_total) > 0 ? "Ventas brutas" : "Ventas"} value={money.format(Number(report.sales_total))} />
+        <Kpi label="Ventas netas" value={money.format(Number(report.sales_total))} />
         <Kpi label="Tickets" value={String(report.tickets)} />
         <Kpi label="Ticket promedio" value={money.format(Number(report.average_ticket))} />
         <Kpi label="Utilidad bruta" value={money.format(Number(report.gross_profit))} />

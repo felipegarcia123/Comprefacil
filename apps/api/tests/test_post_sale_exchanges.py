@@ -613,5 +613,6 @@ def test_r31_r36_money_return_void_correction_invoice_and_sales(shop):
     blocked = exchange(client, invoiced.id, [(item_of(client, invoiced.id), 1, True)], [take(made["D"])],
                        payment={"channel_id": str(channels["Efectivo"].id)})
     assert blocked.status_code == 409 and "manejo fiscal" in blocked.json()["detail"]["message"]          # 34
-    assert Decimal(summary(client)["sales_total"]) == 30000 * 5                                           # 36
+    # Two completed monetary returns total $60.000; the operational summary is net.
+    assert Decimal(summary(client)["sales_total"]) == 90000                                                # 36
     assert fake.invoices == []

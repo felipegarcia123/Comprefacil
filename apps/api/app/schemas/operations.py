@@ -142,10 +142,11 @@ class ReturnCategoryAmount(BaseModel):
 
 
 class ReturnsSummary(BaseModel):
-    """Returns made in the window (by return date / jornada, never by the sale's). sales_total stays
-    the GROSS figure; net = gross - returns."""
+    """Returns made in the window (by return date / jornada, never by the sale's).
+    Net sales subtract only money effectively refunded; pending electronic refunds stay separate."""
     gross_sales: Decimal
     returns_total: Decimal
+    refunded_total: Decimal = Decimal("0")
     net_sales: Decimal
     refunds_cash: Decimal
     refunds_electronic: Decimal

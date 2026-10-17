@@ -29,6 +29,7 @@ from app.domain.enums import CashMovementType, PurchaseStatus, SaleStatus
 from app.models import (CashMovement, CashSession, DailyReport, Payment,
                         PaymentChannel, Sale, SaleItem, SupplierPayment)
 from app.services.operations import daily_summary
+from app.services.post_sale import completed_refunds_by_channel
 from app.services.reporting import _metrics, _time_expr
 
 ZERO = Decimal("0")
@@ -47,8 +48,10 @@ def _channel_breakdown(db: Session, start: datetime, end: datetime) -> list[dict
         .join(Sale, Sale.id == Payment.sale_id)
         .where(Sale.status == SaleStatus.COMPLETED, Sale.completed_at >= start, Sale.completed_at <= end)
         .group_by(PaymentChannel.id).order_by(PaymentChannel.name)).all()
+    refunded = completed_refunds_by_channel(db, start, end)
     return [{"channel_id": str(channel_id), "channel_name": name, "payment_type": payment_type.value,
-             "payment_group": payment_group.value, "amount": str(_decimal(amount)), "transaction_count": count}
+             "payment_group": payment_group.value,
+             "amount": str(_decimal(amount) - refunded.get(channel_id, ZERO)), "transaction_count": count}
             for channel_id, name, payment_type, payment_group, amount, count in rows]
 
 
@@ -129,8 +132,10 @@ def _calculate_window(db: Session, start: datetime, end: datetime) -> dict:
                   for row in summary.categories]
 
     sales_total, tickets, average_ticket, _units = _metrics(db, start, end)
-    cash_total = sum((Decimal(c["cash"]) for c in categories), ZERO)
-    electronic_total = sum((Decimal(c["electronic"]) for c in categories), ZERO)
+    channels = _channel_breakdown(db, start, end)
+    cash_total = sum((Decimal(c["amount"]) for c in channels if c["payment_group"] == "CASH"), ZERO)
+    electronic_total = sum((Decimal(c["amount"]) for c in channels if c["payment_group"] == "ELECTRONIC"), ZERO)
+    net_sales = sales_total - summary.returns.refunded_total
 
     line_cost = db.scalar(select(func.coalesce(func.sum(SaleItem.unit_cost * SaleItem.quantity), 0))
         .join(Sale, Sale.id == SaleItem.sale_id)
@@ -139,7 +144,6 @@ def _calculate_window(db: Session, start: datetime, end: datetime) -> dict:
     gross_profit = sales_total - gross_cost
     gross_margin = (gross_profit / sales_total * 100) if sales_total > 0 else ZERO
 
-    channels = _channel_breakdown(db, start, end)
     products = _product_breakdown(db, start, end)
     hourly = _hourly_breakdown(db, start, end)
 
@@ -160,7 +164,7 @@ def _calculate_window(db: Session, start: datetime, end: datetime) -> dict:
     }
 
     return {
-        "sales_total": sales_total, "cash_total": cash_total, "electronic_total": electronic_total,
+        "sales_total": net_sales, "cash_total": cash_total, "electronic_total": electronic_total,
         "tickets": tickets, "average_ticket": average_ticket,
         "gross_cost": gross_cost, "gross_profit": gross_profit,
         "gross_margin": gross_margin.quantize(Decimal("0.01")),

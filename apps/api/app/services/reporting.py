@@ -110,18 +110,22 @@ def dashboard_report(db:Session,preset:str,date_from=None,date_to=None,now=None)
     series=_series(db,start,end,granularity,now); categories=_categories(db,start,end,sales)
     channel_rows=db.execute(select(PaymentChannel.id,PaymentChannel.name,PaymentChannel.payment_group,func.sum(Payment.amount),func.count(Payment.id)).join(Payment,effective_channel_id_column()==PaymentChannel.id).join(Sale,Sale.id==Payment.sale_id).where(
         Sale.status==SaleStatus.COMPLETED,Sale.completed_at>=start,Sale.completed_at<=end).group_by(PaymentChannel.id,PaymentChannel.name,PaymentChannel.payment_group)).all()
-    channels=[ReportChannel(channel_id=i,name=n,group=g.value,amount=Decimal(a),payment_count=int(c),percentage=(Decimal(a)/sales*100).quantize(Decimal("0.1")) if sales else ZERO) for i,n,g,a,c in channel_rows]
+    from app.services.post_sale import completed_refunds_by_channel
+    refunded_by_channel = completed_refunds_by_channel(db, start, end)
+    refunded_total = sum(refunded_by_channel.values(), ZERO)
+    net_sales = sales - refunded_total
+    channels=[ReportChannel(channel_id=i,name=n,group=g.value,amount=Decimal(a)-refunded_by_channel.get(i, ZERO),payment_count=int(c),percentage=((Decimal(a)-refunded_by_channel.get(i, ZERO))/net_sales*100).quantize(Decimal("0.1")) if net_sales else ZERO) for i,n,g,a,c in channel_rows]
     channels.sort(key=lambda x:x.amount,reverse=True); groups=defaultdict(Decimal)
     for row in channels: groups[row.group]+=row.amount
-    payment_groups=[ReportPaymentGroup(group=k,amount=v,percentage=(v/sales*100).quantize(Decimal("0.1")) if sales else ZERO) for k,v in groups.items()]
+    payment_groups=[ReportPaymentGroup(group=k,amount=v,percentage=(v/net_sales*100).quantize(Decimal("0.1")) if net_sales else ZERO) for k,v in groups.items()]
     top=[TopProduct(product_id=i,name=n,units=Decimal(u),sales=Decimal(s)) for i,n,u,s in db.execute(select(SaleItem.product_id,SaleItem.product_name,func.sum(SaleItem.quantity),func.sum(SaleItem.line_total)).join(Sale,Sale.id==SaleItem.sale_id).where(
         Sale.status==SaleStatus.COMPLETED,Sale.completed_at>=start,Sale.completed_at<=end,SaleItem.product_id.is_not(None)).group_by(SaleItem.product_id,SaleItem.product_name).order_by(func.sum(SaleItem.quantity).desc()).limit(10)).all()]
     expenses=Decimal(db.scalar(select(func.coalesce(func.sum(Expense.amount),0)).where(Expense.created_at>=start,Expense.created_at<=end)))
     consumption=Decimal(db.scalar(select(func.coalesce(func.sum(InternalConsumption.cost_total),0)).where(InternalConsumption.created_at>=start,InternalConsumption.created_at<=end)))
     from app.services.post_sale import exchanges_summary, returns_summary
-    returns_total=returns_summary(db,start,end)["returns_total"]
+    returns_total=returns_summary(db,start,end)["refunded_total"]
     exchanged=exchanges_summary(db,start,end)
     peak_t=max(series,key=lambda x:x.tickets) if tickets else None;peak_s=max(series,key=lambda x:x.sales) if sales else None
     period=ReportPeriod(preset=preset,date_from=start,date_to=end,previous_from=previous_start,previous_to=previous_end,granularity=granularity)
-    summary=ReportSummary(sales_total=sales,tickets=tickets,average_ticket=average,units=units,expenses=expenses,internal_consumption=consumption,sales_change=_change(sales,ps),tickets_change=_change(tickets,pt),average_ticket_change=_change(average,pa),peak_tickets_label=peak_t.label if peak_t else None,peak_tickets=peak_t.tickets if peak_t else 0,peak_sales_label=peak_s.label if peak_s else None,peak_sales=peak_s.sales if peak_s else ZERO,leading_category=categories[0].name if categories else None,leading_channel=channels[0].name if channels else None,returns_total=returns_total,net_sales=sales-returns_total,exchange_count=exchanged['exchange_count'],exchange_difference=exchanged['difference_collected'],exchange_difference_refunded=exchanged['difference_refunded'])
+    summary=ReportSummary(sales_total=net_sales,tickets=tickets,average_ticket=net_sales/tickets if tickets else ZERO,units=units,expenses=expenses,internal_consumption=consumption,sales_change=_change(net_sales,ps),tickets_change=_change(tickets,pt),average_ticket_change=_change(net_sales/tickets if tickets else ZERO,pa),peak_tickets_label=peak_t.label if peak_t else None,peak_tickets=peak_t.tickets if peak_t else 0,peak_sales_label=peak_s.label if peak_s else None,peak_sales=peak_s.sales if peak_s else ZERO,leading_category=categories[0].name if categories else None,leading_channel=channels[0].name if channels else None,returns_total=returns_total,net_sales=net_sales,exchange_count=exchanged['exchange_count'],exchange_difference=exchanged['difference_collected'],exchange_difference_refunded=exchanged['difference_refunded'])
     return DashboardReport(period=period,summary=summary,series=series,categories=categories,payment_groups=payment_groups,payment_channels=channels,top_products=top)

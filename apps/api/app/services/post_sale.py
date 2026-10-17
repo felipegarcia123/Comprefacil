@@ -1116,6 +1116,28 @@ def confirm_exchange_refund(db: Session, sale_id: UUID, exchange_id: UUID,
 
 # ---- read models for reports -------------------------------------------------------------------------
 
+def completed_refunds_by_channel(db: Session, start: datetime | None = None,
+                                 end: datetime | None = None,
+                                 cash_session_id: UUID | None = None) -> dict[UUID, Decimal]:
+    """Amounts actually refunded, grouped by channel.
+
+    Pending digital transfers are obligations, not money already returned.
+    Cash refunds are completed atomically with their CashMovement.  This
+    read-model helper keeps the original sale and refund records untouched.
+    """
+    conditions = [SaleRefund.affects_cash.is_(True) | (SaleRefund.status == "COMPLETED")]
+    if cash_session_id is not None:
+        conditions.append(SaleReturn.cash_session_id == cash_session_id)
+    else:
+        if start is not None:
+            conditions.append(SaleReturn.created_at >= start)
+        if end is not None:
+            conditions.append(SaleReturn.created_at <= end)
+    rows = db.execute(select(SaleRefund.channel_id, func.sum(SaleRefund.amount))
+        .join(SaleReturn, SaleReturn.id == SaleRefund.return_id)
+        .where(*conditions).group_by(SaleRefund.channel_id)).all()
+    return {channel_id: Decimal(amount) for channel_id, amount in rows}
+
 def returns_summary(db: Session, date_from: datetime, date_to: datetime) -> dict:
     """Money returns registered in [date_from, date_to] (a return belongs to the date / jornada it was made,
     not to the sale's). Cash refunds are allocated over the categories of the returned lines with the same
@@ -1150,7 +1172,9 @@ def returns_summary(db: Session, date_from: datetime, date_to: datetime) -> dict
         cash += return_cash
         for code, amount in _allocate(return_cash, dict(categories), sum(categories.values(), ZERO)).items():
             cash_by_category[code] += amount
-    return {"returns_total": total, "refunds_cash": cash, "refunds_electronic": electronic_done,
+    refunded_total = cash + electronic_done
+    return {"returns_total": total, "refunded_total": refunded_total,
+            "refunds_cash": cash, "refunds_electronic": electronic_done,
             "refunds_electronic_pending": electronic_pending, "return_count": len(returns), "void_count": voids,
             "by_category": dict(by_category), "cash_by_category": dict(cash_by_category)}
 

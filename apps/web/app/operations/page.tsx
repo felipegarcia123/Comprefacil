@@ -48,8 +48,8 @@ export default function OperationsPage() {
 
   const { primary, extra } = groupRows(summary, categories);
   const allRows = [...primary, ...extra];
-  const cashTotal = allRows.reduce((sum, row) => sum + Number(row.cash), 0);
-  const electronicTotal = allRows.reduce((sum, row) => sum + Number(row.electronic), 0);
+  const cashTotal = allRows.reduce((sum, row) => sum + Number(row.cash), 0) - Number(summary?.returns?.refunds_cash ?? 0);
+  const electronicTotal = allRows.reduce((sum, row) => sum + Number(row.electronic), 0) - Number(summary?.returns?.refunds_electronic ?? 0);
   const productsTaken = Number(summary?.outgoing.internal_consumption_cost ?? 0) + Number(summary?.outgoing.internal_consumption_estimated ?? 0);
 
   return (
@@ -92,7 +92,7 @@ export default function OperationsPage() {
             <section className="operations-panel" aria-label="Devoluciones">
               <header className="operations-panel__head"><h2>Devoluciones de dinero</h2></header>
               <Row label="Ventas brutas" value={summary.returns.gross_sales} />
-              <Row label="Devoluciones" value={summary.returns.returns_total} />
+              <Row label="Devuelto / reembolsado" value={summary.returns.refunded_total ?? "0"} />
               <Row label="Ventas netas" value={summary.returns.net_sales} />
               <Row label="Reembolsado en efectivo" value={summary.returns.refunds_cash} />
               <Row label="Reembolsado electrónico" value={summary.returns.refunds_electronic} />

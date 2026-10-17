@@ -35,7 +35,7 @@ class ReportSummary(BaseModel):
     peak_sales: Decimal
     leading_category: str | None
     leading_channel: str | None
-    # Post-sale (0027): sales_total is GROSS; returns made in the period (by return date) and net.
+    # Post-sale: sales_total is net of completed refunds; returns are by return date.
     returns_total: Decimal = Decimal("0")
     net_sales: Decimal | None = None
     # Product exchanges: not sales; only their collected difference is money.

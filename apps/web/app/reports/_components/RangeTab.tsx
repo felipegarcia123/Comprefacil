@@ -46,7 +46,7 @@ export function RangeTab() {
       {loading && !data ? <p className="chart-empty">Cargando…</p> : data && (
         <>
           <div className="ui-metric-grid">
-            <Kpi label={Number(data.summary.returns_total ?? 0) > 0 ? "Ventas brutas" : "Ventas"} value={money(data.summary.sales_total)} change={data.summary.sales_change} />
+            <Kpi label="Ventas netas" value={money(data.summary.sales_total)} change={data.summary.sales_change} />
             <Kpi label="Tickets cerrados" value={number(data.summary.tickets)} change={data.summary.tickets_change} />
             <Kpi label="Ticket promedio" value={money(data.summary.average_ticket)} change={data.summary.average_ticket_change} />
             <Kpi label="Unidades vendidas" value={number(data.summary.units)} />

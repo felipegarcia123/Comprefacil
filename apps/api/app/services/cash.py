@@ -15,6 +15,7 @@ from app.schemas.cash import (CashHistoryRow, CashMovementOut, CashSessionOut,
                               CashSummaryOut, ChannelCashSummary, FinancialSessionMovement, SupplierPaymentSummary,
                               CloseCashSessionIn)
 from app.services.pos import get_operator
+from app.services.post_sale import completed_refunds_by_channel
 from app.services.operational_session import require_open_session
 
 ZERO = Decimal("0")
@@ -131,7 +132,8 @@ def cash_summary(db: Session, session: CashSession) -> CashSummaryOut:
         .join(Sale, Sale.id == Payment.sale_id)
         .where(Sale.completed_at >= session.opened_at, Sale.completed_at <= cutoff)
         .group_by(PaymentChannel.id).order_by(PaymentChannel.display_order)).all()
-    total_sales = sum((Decimal(row[3]) for row in payment_rows), ZERO)
+    refunds_by_channel = completed_refunds_by_channel(db, cash_session_id=session.id)
+    total_sales = sum((Decimal(row[3]) - refunds_by_channel.get(row[0], ZERO) for row in payment_rows), ZERO)
     transaction_count = db.scalar(select(func.count(distinct(Payment.sale_id)))
         .join(Sale, Sale.id == Payment.sale_id).where(
             Sale.completed_at >= session.opened_at, Sale.completed_at <= cutoff)) or 0
@@ -171,7 +173,7 @@ def cash_summary(db: Session, session: CashSession) -> CashSummaryOut:
         total_sales=total_sales, transaction_count=transaction_count,
         payment_channels=[ChannelCashSummary(
             channel_id=row[0], channel_name=row[1], payment_type=row[2],
-            amount=row[3], payment_count=row[4]) for row in payment_rows],
+            amount=Decimal(row[3]) - refunds_by_channel.get(row[0], ZERO), payment_count=row[4]) for row in payment_rows],
         recent_movements=movements, financial_movements=financial,
         supplier_payments_total=sum((Decimal(row[3]) for row in supplier_rows), ZERO),
         supplier_payment_channels=[SupplierPaymentSummary(channel_id=row[0], channel_name=row[1],

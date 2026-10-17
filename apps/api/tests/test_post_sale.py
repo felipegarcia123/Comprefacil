@@ -159,6 +159,12 @@ def test_04_partial_return_restocks_once_and_refunds_cash(ctx):
     assert Decimal(data["lines"][0]["returnable_quantity"]) == 2
     assert current_stock(db, product.id) == stock_before + 1
     assert cash_total(db) == cash_before - 10000
+    # The sale and refund stay as separate ledger facts, while the session
+    # read model exposes their net effect exactly once.
+    summary = client.get(f"{API}/cash/current").json()
+    assert Decimal(summary["total_sales"]) == 20000
+    assert Decimal({row["channel_name"]: row for row in summary["payment_channels"]}["Efectivo"]["amount"]) == 20000
+    assert Decimal(client.get(f"{API}/payments/summary").json()["total_sales"]) == 20000
     assert count(db, InventoryMovement, InventoryMovement.movement_type == InventoryMovementType.RETURN) == 1
     # The sale itself is untouched history.
     db.expire_all()
@@ -173,6 +179,7 @@ def test_05_total_return_marks_returned(ctx):
     data = do_return(client, sale.id, [(item, 2, True)]).json()
     assert data["returns"][0]["kind"] == "TOTAL" and data["display_status"] == "RETURNED"
     assert data["allowed_actions"]["return"]["allowed"] is False
+    assert Decimal(client.get(f"{API}/cash/current").json()["total_sales"]) == ZERO
 
 
 def test_06_two_partial_returns_accumulate_and_the_rest_is_total(ctx):
@@ -284,6 +291,10 @@ def test_14_electronic_refund_is_pending_and_moves_no_cash(ctx):
     # The cash session lists it for traceability without touching the drawer.
     rows = [m for m in client.get(f"{API}/cash/current").json()["financial_movements"] if m["type"] == "REFUND"]
     assert rows and rows[0]["affects_cash"] is False and "Pendiente devolver por Nequi" in rows[0]["subtitle"]
+    # Pending external transfers do not reduce net sales or physical cash.
+    summary = client.get(f"{API}/cash/current").json()
+    assert Decimal(summary["total_sales"]) == 20000
+    assert Decimal({row["channel_name"]: row for row in summary["payment_channels"]}["Nequi"]["amount"]) == 20000
 
 
 def test_15_confirm_electronic_refund_records_who_and_when_without_stock(ctx):
@@ -299,6 +310,9 @@ def test_15_confirm_electronic_refund_records_who_and_when_without_stock(ctx):
     refund = data["returns"][0]["refunds"][0]
     assert refund["status"] == "COMPLETED" and refund["confirmed_at"] and refund["confirmed_by_text"] == "Ana"
     assert count(db, InventoryMovement, InventoryMovement.movement_type == InventoryMovementType.RETURN) == returns_before
+    summary = client.get(f"{API}/cash/current").json()
+    assert Decimal(summary["total_sales"]) == 10000
+    assert Decimal({row["channel_name"]: row for row in summary["payment_channels"]}["Nequi"]["amount"]) == 10000
 
 
 def test_16_double_confirmation_is_idempotent(ctx):
@@ -546,9 +560,9 @@ def test_34_gross_returns_net_in_summary_and_reports(ctx):
     returns = summary(client)["returns"]
     assert Decimal(returns["gross_sales"]) == 30000 and Decimal(returns["returns_total"]) == 10000
     assert Decimal(returns["net_sales"]) == 20000 and Decimal(returns["refunds_cash"]) == 10000
-    assert Decimal(summary(client)["sales_total"]) == 30000                   # gross stays gross
+    assert Decimal(summary(client)["sales_total"]) == 20000
     dashboard = client.get(f"{API}/reports/dashboard?preset=today").json()["summary"]
-    assert Decimal(dashboard["sales_total"]) == 30000 and Decimal(dashboard["returns_total"]) == 10000
+    assert Decimal(dashboard["sales_total"]) == 20000 and Decimal(dashboard["returns_total"]) == 10000
     assert Decimal(dashboard["net_sales"]) == 20000
     live = client.get(f"{API}/reports/current").json()["report_data"]["returns"]
     assert Decimal(live["returns_total"]) == 10000 and Decimal(live["net_sales"]) == 20000

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.services.effective_payments import effective_channel_id_column
+from app.services.post_sale import completed_refunds_by_channel
 from app.domain.enums import PaymentGroup, PaymentMethod
 from app.models import BusinessAccount, Payment, PaymentChannel
 from app.schemas.payments import (PaymentChannelActiveIn, PaymentChannelCreate,
@@ -100,8 +101,10 @@ def payment_summary(date_from: datetime | None = None, date_to: datetime | None 
     if date_to:
         stmt = stmt.where(Payment.created_at <= date_to)
     rows = db.execute(stmt.group_by(PaymentChannel.id).order_by(PaymentChannel.display_order)).all()
-    total = sum((row[3] for row in rows), Decimal("0"))
+    refunded = completed_refunds_by_channel(db, date_from, date_to)
+    total = sum((Decimal(row[3]) - refunded.get(row[0], Decimal("0")) for row in rows), Decimal("0"))
     return PaymentSummaryOut(total_sales=total, channels=[PaymentSummaryRow(
-        channel_id=row[0], channel_name=row[1], payment_type=row[2], amount=row[3],
-        payment_count=row[4], percentage=(row[3] / total * 100).quantize(Decimal("0.01"))
+        channel_id=row[0], channel_name=row[1], payment_type=row[2],
+        amount=Decimal(row[3]) - refunded.get(row[0], Decimal("0")),
+        payment_count=row[4], percentage=((Decimal(row[3]) - refunded.get(row[0], Decimal("0"))) / total * 100).quantize(Decimal("0.01"))
         if total else Decimal("0")) for row in rows])

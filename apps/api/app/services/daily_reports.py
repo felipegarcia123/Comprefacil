@@ -34,6 +34,7 @@ from app.services.reporting import _metrics, _time_expr
 
 ZERO = Decimal("0")
 logger = logging.getLogger(__name__)
+NET_SALES_BASIS = "NET_COMPLETED_REFUNDS_V1"
 
 
 def _decimal(value) -> Decimal:
@@ -169,6 +170,10 @@ def _calculate_window(db: Session, start: datetime, end: datetime) -> dict:
         "gross_cost": gross_cost, "gross_profit": gross_profit,
         "gross_margin": gross_margin.quantize(Decimal("0.01")),
         "report_data": {
+            # DailyReport is immutable. This marker distinguishes snapshots
+            # generated after net-sales accounting from historical snapshots
+            # whose persisted sales_total is gross.
+            "sales_basis": NET_SALES_BASIS,
             "categories": categories, "payment_channels": channels, "products": products,
             "hourly": hourly, "operations": operations,
             "highlights": _highlights(categories, channels, products, hourly),

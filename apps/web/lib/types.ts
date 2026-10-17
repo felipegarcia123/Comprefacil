@@ -97,7 +97,7 @@ export type DailyReportHighlights = {
   top_product_by_gross_profit: { product_id: string; product_name: string; gross_profit: string } | null;
   top_category_by_revenue: { code: string; name: string; total: string } | null;
 };
-export type DailyReportData = { categories: DailyReportCategory[]; payment_channels: DailyReportChannel[]; products: DailyReportProduct[]; hourly: DailyReportHour[]; operations: DailyReportOperations; highlights: DailyReportHighlights; returns?: ReturnsBlock; exchanges?: ExchangesBlock };
+export type DailyReportData = { sales_basis?: "NET_COMPLETED_REFUNDS_V1"; categories: DailyReportCategory[]; payment_channels: DailyReportChannel[]; products: DailyReportProduct[]; hourly: DailyReportHour[]; operations: DailyReportOperations; highlights: DailyReportHighlights; returns?: ReturnsBlock; exchanges?: ExchangesBlock };
 /** Product exchanges of the window: product movement, not sales nor refunds; only the difference is money. */
 export type ExchangesBlock = { exchange_count: number; same_value_count: number; customer_pays_count?: number; store_refunds_count?: number; returned_credit: string; replacement_total: string; difference_collected: string; difference_cash: string; difference_electronic: string; difference_refunded?: string; refunded_cash?: string; refunded_electronic?: string; refunded_electronic_pending?: string };
 /** Post-venta (0027): returns of the window (by return date). sales_total stays GROSS. Absent on reports frozen before 0027. */

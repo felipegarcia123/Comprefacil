@@ -87,6 +87,32 @@ def test_only_closed_session_can_generate_a_report(report_ctx):
         build_daily_report(db, open_session)
 
 
+def test_legacy_closed_report_keeps_gross_snapshot_and_exposes_saved_net_separately(report_ctx):
+    """Old immutable snapshots predate NET_COMPLETED_REFUNDS_V1 and must not be reinterpreted."""
+    db, user, *_ = report_ctx
+    opened = datetime(2026, 9, 20, 13, 0, tzinfo=timezone.utc)
+    closed = datetime(2026, 9, 20, 22, 0, tzinfo=timezone.utc)
+    session = _closed_session(db, user, opened, closed)
+    legacy = DailyReport(
+        cash_session_id=session.id, sales_total=Decimal("100000"), cash_total=Decimal("100000"),
+        electronic_total=Decimal("0"), tickets=1, average_ticket=Decimal("100000"),
+        gross_cost=Decimal("0"), gross_profit=Decimal("100000"), gross_margin=Decimal("100"),
+        closing_expected=Decimal("0"), closing_actual=Decimal("0"), closing_difference=Decimal("0"),
+        report_data={"categories": [], "payment_channels": [], "products": [], "hourly": [],
+                     "operations": {}, "highlights": {},
+                     "returns": {"gross_sales": "100000", "returns_total": "20000",
+                                 "net_sales": "80000", "refunds_cash": "20000",
+                                 "refunds_electronic": "0", "refunds_electronic_pending": "0",
+                                 "return_count": 1, "void_count": 0}})
+    db.add(legacy); db.commit()
+
+    result = current_report(db)
+    assert result["status"] == "CLOSED"
+    assert result["sales_total"] == Decimal("100000")  # original immutable gross close
+    assert result["report_data"]["returns"]["net_sales"] == "80000"  # separate historical calculation
+    assert "sales_basis" not in result["report_data"]
+
+
 def test_close_still_succeeds_when_report_generation_fails(report_ctx, monkeypatch):
     db, user, cigar, supercat, cash, nequi, p1, p2 = report_ctx
     session = CashSession(opening_amount=Decimal("100000"), opened_by=user.id,

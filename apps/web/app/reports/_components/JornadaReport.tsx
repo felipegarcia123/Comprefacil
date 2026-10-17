@@ -22,12 +22,13 @@ export function JornadaReport({ report }: { report: ReportLike }) {
   const channels = report.report_data.payment_channels.map(c => ({ name: c.channel_name, amount: c.amount }));
   const diff = report.closing_difference === null ? null : Number(report.closing_difference);
   const op = report.report_data.operations;
+  const netSnapshot = report.report_data.sales_basis === "NET_COMPLETED_REFUNDS_V1";
 
   return (
     <div className="reports-content">
       <div className="reports-period"><strong>{dateFull.format(new Date(report.opened_at))}</strong><small>{time.format(new Date(report.opened_at))} – {time.format(new Date(report.closed_at))}</small></div>
       <div className="ui-metric-grid">
-        <Kpi label="Ventas netas" value={money.format(Number(report.sales_total))} />
+        <Kpi label={netSnapshot ? "Ventas netas" : report.report_data.returns ? "Ventas brutas" : "Ventas"} value={money.format(Number(report.sales_total))} />
         <Kpi label="Tickets" value={String(report.tickets)} />
         <Kpi label="Ticket promedio" value={money.format(Number(report.average_ticket))} />
         <Kpi label="Utilidad bruta" value={money.format(Number(report.gross_profit))} />

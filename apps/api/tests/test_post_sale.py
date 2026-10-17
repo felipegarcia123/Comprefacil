@@ -564,8 +564,15 @@ def test_34_gross_returns_net_in_summary_and_reports(ctx):
     dashboard = client.get(f"{API}/reports/dashboard?preset=today").json()["summary"]
     assert Decimal(dashboard["sales_total"]) == 20000 and Decimal(dashboard["returns_total"]) == 10000
     assert Decimal(dashboard["net_sales"]) == 20000
-    live = client.get(f"{API}/reports/current").json()["report_data"]["returns"]
+    live_report = client.get(f"{API}/reports/current").json()
+    live = live_report["report_data"]["returns"]
+    assert Decimal(live_report["sales_total"]) == 20000
+    assert live_report["report_data"]["sales_basis"] == "NET_COMPLETED_REFUNDS_V1"
     assert Decimal(live["returns_total"]) == 10000 and Decimal(live["net_sales"]) == 20000
+    close_session(client, 20000)
+    closed = client.get(f"{API}/reports/current").json()
+    assert closed["status"] == "CLOSED" and Decimal(closed["sales_total"]) == 20000
+    assert closed["report_data"]["sales_basis"] == "NET_COMPLETED_REFUNDS_V1"
 
 
 def test_35_return_belongs_to_the_jornada_where_it_was_made_and_closed_reports_do_not_change(ctx):

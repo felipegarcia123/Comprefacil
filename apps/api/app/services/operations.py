@@ -300,6 +300,7 @@ def daily_summary(db: Session, date_from: datetime, date_to: datetime,
     exchanged = exchanges_summary(db, date_from, date_to)
     returns = ReturnsSummary(
         gross_sales=sales_total, returns_total=returned["returns_total"],
+        refunded_total=returned["refunded_total"],
         net_sales=sales_total - returned["refunded_total"], refunds_cash=returned["refunds_cash"],
         refunds_electronic=returned["refunds_electronic"],
         refunds_electronic_pending=returned["refunds_electronic_pending"],

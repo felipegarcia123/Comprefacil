@@ -515,7 +515,7 @@ export default function SalesPage() {
           <TouchButton size="cta" module={consumptionActive ? "caja" : "ventas"} disabled={!itemCount || busy} onClick={() => consumptionActive ? setConsumptionConfirmOpen(true) : setPayOpen(true)}>{consumptionActive ? "Registrar consumo interno" : "COBRAR"}</TouchButton>
         </div>
       )}
-      <Sheet open={payOpen} title="Cobrar" persistent wide module="ventas" onClose={() => setPayOpen(false)}>{payOpen && !consumptionActive && panel("sheet")}</Sheet>
+      <Sheet open={payOpen} title="Cobrar" persistent wide side={wide} module="ventas" onClose={() => setPayOpen(false)}>{payOpen && !consumptionActive && panel("sheet")}</Sheet>
 
       <ProductFormSheet
         target={productOpen ? null : undefined}

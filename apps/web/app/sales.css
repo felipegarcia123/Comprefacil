@@ -69,9 +69,13 @@
 
 /* Payment panel: total on top, scrolling middle, COBRAR pinned at the bottom (always visible) */
 .pay { display: flex; flex-direction: column; min-height: 0; }
+.pay--sheet { height: 100%; min-height: 0; }
 .pay--dock { flex: 1; }
 .pay__top { flex: none; padding: var(--sp-3) var(--sp-3) 0; }
+.pay__top .ui-display { border: 2px solid var(--mod-deep); border-radius: var(--radius-key); background: var(--mod-tint); }
 .pay__scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3); }
+.pay__methods, .pay__cash, .pay__electronic { border: 2px solid var(--color-line); border-radius: var(--radius-key); background: var(--color-paper); padding: var(--sp-2); }
+.pay__cash, .pay__electronic { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pay__channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
 /* Compact key: icon over name, so six channels take two 48 px rows (the account keys must fit below them at 680 px) */
 .pay__channels .ui-pay { flex-direction: column; gap: 2px; min-height: var(--size-touch); padding: 4px; font-size: 15px; line-height: 1.1; text-align: center; }
@@ -156,8 +160,11 @@
 .pay__cta { flex: none; padding: var(--sp-3) var(--sp-3) var(--sp-4); border-top: 2px solid var(--color-line); }
 .pay__charge { justify-content: center; }
 .pay__pad { display: flex; flex-direction: column; gap: var(--sp-3); }
-.pay--sheet .pay__scroll { overflow: visible; }
+.pay--sheet .pay__scroll { overflow: auto; }
 .pay--sheet .pay__top, .pay--sheet .pay__scroll, .pay--sheet .pay__cta { padding-left: 0; padding-right: 0; }
+.pay--sheet .pay__cta { background: var(--color-surface); }
+.ui-sheet--side .pay__top { padding-top: var(--sp-2); }
+.ui-sheet--side .pay__scroll { padding-bottom: var(--sp-3); }
 
 /* Tablet / phone: bottom dock with the total and COBRAR always reachable */
 .sale__dock { flex: none; position: sticky; bottom: 0; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: var(--sp-2); padding: var(--sp-2); background: var(--color-surface); border-top: 2px solid var(--color-line); }
@@ -216,4 +223,13 @@
 .pay__granel-row b { color: var(--color-ink); }
 .pay__granel-choice .ui-choice__item { min-height: var(--size-touch); }
 .pay__granel-note { font-size: var(--text-micro); color: var(--color-ink-muted); line-height: 1.3; }
+.pay__section-title { margin: 0 0 var(--sp-2); font-size: var(--text-micro); font-weight: 750; letter-spacing: .03em; text-transform: uppercase; color: var(--color-ink-muted); }
+.pay__field-label { grid-column: 1 / -1; font-size: var(--text-micro); font-weight: 750; color: var(--color-ink-muted); }
+
+/* Checkout drawer layout: each decision is a contained section and only the middle scrolls. */
+.pay--sheet .pay__methods, .pay--sheet .pay__cash, .pay--sheet .pay__electronic { border: 2px solid var(--color-line); border-radius: var(--radius-key); background: var(--color-paper); padding: var(--sp-2); }
+.pay--sheet .pay__cash, .pay--sheet .pay__electronic { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pay--sheet .pay__cta { background: var(--color-surface); }
+.ui-sheet--side .pay__top { padding-top: var(--sp-2); }
+.ui-sheet--side .pay__scroll { padding-bottom: var(--sp-3); }
 .manual-item__pet .ui-choice__item { flex: 1 1 0; }

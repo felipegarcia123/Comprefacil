@@ -125,6 +125,9 @@
 /* ---------- Sheet (menus) ---------- */
 .ui-sheet { margin: auto; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: var(--radius-panel); background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-panel), 0 0 0 2px var(--mod-deep, var(--color-ink)); font-family: var(--font-sans); overscroll-behavior: contain; }
 .ui-sheet--wide { width: min(760px, calc(100vw - 32px)); }
+.ui-sheet--side { width: min(520px, 46vw); height: 100dvh; max-height: none; margin: 0 0 0 auto; border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
+.ui-sheet--side[open] { animation: ui-slide-side var(--t-panel) var(--ease); }
+.ui-sheet--side .ui-sheet__body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: var(--sp-2) var(--sp-4) var(--sp-4); }
 .ui-sheet[open] { display: flex; flex-direction: column; animation: ui-pop var(--t-panel) var(--ease); }
 .ui-sheet::backdrop { background: rgb(22 35 43 / 0.55); }
 .ui-sheet__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) 0 var(--sp-4); }
@@ -132,9 +135,11 @@
 .ui-sheet__body { overflow: auto; overscroll-behavior: contain; padding: var(--sp-2) var(--sp-4) var(--sp-6); }
 @media (max-width: 639px) {
   .ui-sheet { width: 100%; max-width: none; margin: auto 0 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+  .ui-sheet--side { width: 100%; height: auto; max-height: calc(100dvh - 32px); margin: auto 0 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
   .ui-sheet[open] { animation: ui-slide var(--t-panel) var(--ease); }
 }
 @keyframes ui-slide { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ui-slide-side { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* Nav rows used inside menus */
 .ui-menu-list { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }

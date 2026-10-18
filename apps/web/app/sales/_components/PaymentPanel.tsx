@@ -120,6 +120,8 @@ export function PaymentPanel(props: Props) {
         )}
         {/* Efectivo / Transferencia are the choice; "Dividir" (several methods) opens its own sheet, so it sits
             beside the radiogroup, never inside it, and is always in view instead of at the bottom of the scroll. */}
+        <section aria-labelledby="pay-method-title">
+          <p id="pay-method-title" className="pay__section-title">Medio de pago</p>
         <div className="pay__methods">
           <div className="pay__modes" role="radiogroup" aria-label="Forma de pago">
             <ModeKey icon={Banknote} label="Efectivo" selected={cash} disabled={!hasCashChannel} onSelect={() => onMode("cash")} />
@@ -129,9 +131,11 @@ export function PaymentPanel(props: Props) {
             <Columns2 size={22} aria-hidden="true" /><span>Dividir</span>
           </button>
         </div>
+        </section>
 
         {cash ? (
-          <div className="pay__cash">
+          <section className="pay__cash" aria-labelledby="pay-cash-title">
+            <p id="pay-cash-title" className="pay__section-title">Efectivo recibido</p>
             <div className="pay__readouts">
               <Display size="small" label="Recibido" value={money.format(receivedNumber)} />
               <Display size="small" tone="amber" label="Cambio" value={money.format(change)} tickKey={change} live />
@@ -148,11 +152,11 @@ export function PaymentPanel(props: Props) {
                 La caja está cerrada: no se puede recibir efectivo todavía.
               </InlineMessage>
             )}
-          </div>
+          </section>
         ) : (
           <fieldset className="pay__electronic">
+            <legend className="pay__section-title">Pago electrónico</legend>
             {/* The keys name themselves: the legend is only visible while it is an instruction. */}
-            <legend className={cx(!missingChannel && "ui-sr-only")}>{missingChannel ? "Elige el canal exacto" : "Canal"}</legend>
             <div className="pay__channels" role="group" aria-label="Canal electrónico">
               {electronicChannels.map(item => (
                 <PaymentButton key={item.id} name={item.name} kind={item.payment_type} selected={item.id === channelId} onSelect={() => onChannel(item.id)} />
@@ -160,6 +164,7 @@ export function PaymentPanel(props: Props) {
             </div>
             {isCard && (
               <div className="pay__card-type" role="radiogroup" aria-label="Tipo de tarjeta">
+                <span className="pay__field-label">Tipo de tarjeta</span>
                 {(["DEBIT", "CREDIT"] as const).map(value => (
                   <button key={value} type="button" role="radio" aria-checked={cardType === value}
                     className={cx("ui-choice__item", cardType === value && "ui-choice__item--on")} onClick={() => onCardType(value)}>

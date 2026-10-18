@@ -15,6 +15,8 @@ type Props = {
   persistent?: boolean;
   /** Wider panel from 640px (detail views with a table). Still a bottom sheet on phones. */
   wide?: boolean;
+  /** Desktop side drawer anchored to the right edge. On narrow screens it remains a bottom sheet. */
+  side?: boolean;
 };
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * For non-destructive content only: tapping the backdrop or pressing Esc closes it.
  * (Use ConfirmDialog for decisions that must not be dismissed by accident.)
  */
-export function Sheet({ open, title, onClose, children, module, persistent, wide }: Props) {
+export function Sheet({ open, title, onClose, children, module, persistent, wide, side }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -41,7 +43,7 @@ export function Sheet({ open, title, onClose, children, module, persistent, wide
   }
 
   return (
-    <dialog ref={ref} className={wide ? "ui-sheet ui-sheet--wide" : "ui-sheet"} data-module={module} aria-labelledby={titleId} onClick={onBackdrop}
+    <dialog ref={ref} className={`ui-sheet${wide ? " ui-sheet--wide" : ""}${side ? " ui-sheet--side" : ""}`} data-module={module} aria-labelledby={titleId} onClick={onBackdrop}
       onClose={event => { if (event.target === ref.current) onClose(); }}
       // Esc: close through React state (like ConfirmDialog) instead of relying on the native "close" event,
       // which a throttled/background renderer may never deliver — the sheet would look closed while the

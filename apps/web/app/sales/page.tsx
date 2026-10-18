@@ -8,7 +8,7 @@ import { MockHardwareService } from "@/lib/hardware";
 import { errorText, money } from "@/lib/format";
 import { onActivateSale, publishSalesContexts, saleLabel } from "@/lib/workContexts";
 import { useBreakpoint } from "@/lib/useBreakpoint";
-import type { BusinessAccount, CardType, Customer, ElectronicInvoiceIntent, Item, PaymentChannel, Product, Sale } from "@/lib/types";
+import type { BusinessAccount, CardType, Customer, ElectronicInvoiceIntent, Item, OperationalCategory, PaymentChannel, Product, ProductCatalog, Sale, Supplier } from "@/lib/types";
 import { useOperationalSession } from "@/components/OperationalSessionProvider";
 import { ConfirmDialog, Display, InlineMessage, Sheet, Toldo, TouchButton, TouchTabs, type TouchTabItem } from "@/components/ui";
 import { CustomerPickerSheet } from "@/components/customers/CustomerPickerSheet";
@@ -19,6 +19,7 @@ import { ManualItemSheet } from "./_components/ManualItemSheet";
 import { PaymentPanel, type PayMode } from "./_components/PaymentPanel";
 import { ScanBar } from "./_components/ScanBar";
 import { SplitPaymentSheet } from "./_components/SplitPaymentSheet";
+import { ProductFormSheet } from "../inventory/_components/ProductFormSheet";
 
 const hardware = new MockHardwareService();
 
@@ -63,6 +64,10 @@ export default function SalesPage() {
   const [invoiceConfigured, setInvoiceConfigured] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [productOpen, setProductOpen] = useState(false);
+  const [productCreated, setProductCreated] = useState<ProductCatalog | null>(null);
+  const [productCategories, setProductCategories] = useState<OperationalCategory[]>([]);
+  const [productSuppliers, setProductSuppliers] = useState<Supplier[]>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [consumptionConfirmOpen, setConsumptionConfirmOpen] = useState(false);
@@ -71,6 +76,13 @@ export default function SalesPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [customerBusy, setCustomerBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!productOpen) return;
+    void Promise.all([api.operationalCategories(), api.suppliers("", true)]).then(([categories, suppliers]) => {
+      setProductCategories(categories); setProductSuppliers(suppliers);
+    }).catch(error => setNotice({ tone: "danger", text: errorText(error) }));
+  }, [productOpen]);
 
   const active = sales.find(sale => sale.id === activeId);
   const consumptionActive = consumption?.id === activeId;
@@ -447,7 +459,12 @@ export default function SalesPage() {
 
       <div className="sale__body">
         <section className="sale__main" aria-label={consumptionActive ? "Consumo interno activo" : "Venta activa"}>
-          <ScanBar disabled={busy} inputRef={inputRef} onScan={scan} onPick={pickProduct} notify={text => setNotice({ tone: "warning", text })} />
+          <ScanBar disabled={busy} inputRef={inputRef} onScan={scan} onPick={pickProduct} onNewProduct={() => { setProductCreated(null); setProductOpen(true); }} notify={text => setNotice({ tone: "warning", text })} />
+          {productCreated && !consumptionActive && (
+            <InlineMessage tone="success" title={`Producto creado: ${productCreated.name}`} onDismiss={() => setProductCreated(null)} actions={<TouchButton variant="secondary" onClick={() => { void pickProduct({ id: productCreated.id, barcode: productCreated.barcode, name: productCreated.name, sale_price: String(productCreated.sale_price), unit_cost: String(productCreated.purchase_cost), stock: String(productCreated.current_stock) }); setProductCreated(null); }}>Agregar al carrito</TouchButton>}>
+              El producto quedó disponible en la búsqueda. Puedes agregarlo a esta venta.
+            </InlineMessage>
+          )}
           {cajaClosed && (
             <InlineMessage tone="warning" title="La caja está cerrada" actions={<Link href="/cash" data-module="caja" className="ui-btn ui-btn--secondary ui-btn--md">Abrir caja</Link>}>
               Puedes preparar ventas, pero no registrar cobros ni productos hasta abrir la jornada.
@@ -488,7 +505,7 @@ export default function SalesPage() {
         {wide && <section className="sale__panel" aria-label={consumptionActive ? "Registro de consumo interno" : "Cobro"}>
           {consumptionActive ? <div className="sale-consumption-panel"><Display size="figure" label="Costo total" value={money.format(total)} caption={`${itemCount} ${itemCount === 1 ? "producto" : "productos"}`} tickKey={total} live />
             {consumption!.items.some(item => Number(item.unit_cost) === 0) && <InlineMessage tone="warning">Hay productos sin costo registrado. Se contabilizarán a $0.</InlineMessage>}
-            <TouchButton size="cta" module="caja" disabled={!itemCount || busy} onClick={() => setConsumptionConfirmOpen(true)}>Registrar consumo interno</TouchButton></div> : panel("dock")}
+            <TouchButton size="cta" module="caja" disabled={!itemCount || busy} onClick={() => setConsumptionConfirmOpen(true)}>Registrar consumo interno</TouchButton></div> : <div className="sale-consumption-panel"><Display size="figure" label="Total" value={money.format(total)} caption={`${itemCount} ${itemCount === 1 ? "producto" : "productos"}`} tickKey={total} live /><TouchButton size="cta" module="ventas" disabled={!itemCount || busy} onClick={() => setPayOpen(true)}>COBRAR</TouchButton></div>}
         </section>}
       </div>
 
@@ -498,7 +515,17 @@ export default function SalesPage() {
           <TouchButton size="cta" module={consumptionActive ? "caja" : "ventas"} disabled={!itemCount || busy} onClick={() => consumptionActive ? setConsumptionConfirmOpen(true) : setPayOpen(true)}>{consumptionActive ? "Registrar consumo interno" : "COBRAR"}</TouchButton>
         </div>
       )}
-      <Sheet open={!wide && payOpen} title="Cobrar" persistent module="ventas" onClose={() => setPayOpen(false)}>{!wide && payOpen && panel("sheet")}</Sheet>
+      <Sheet open={payOpen} title="Cobrar" persistent wide module="ventas" onClose={() => setPayOpen(false)}>{payOpen && !consumptionActive && panel("sheet")}</Sheet>
+
+      <ProductFormSheet
+        target={productOpen ? null : undefined}
+        categories={productCategories}
+        suppliers={productSuppliers}
+        onClose={() => setProductOpen(false)}
+        onSaved={() => setProductOpen(false)}
+        create={async body => { const created = await api.createProduct(body); setProductCreated(created); return created; }}
+        update={async () => { throw new Error("La edición de productos se realiza desde Inventario."); }}
+      />
 
       {splitOpen && active && <SplitPaymentSheet total={posTotal} scaleTotal={scaleTotal} channels={channels} accounts={accounts} busy={busy} close={() => setSplitOpen(false)} confirm={chargeMixed} />}
       {manualOpen && (

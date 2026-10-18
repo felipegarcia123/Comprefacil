@@ -1,81 +1,22 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import { SearchBar } from "@/components/ui";
 
-/** EAN-8/UPC-A/EAN-13/GTIN-14 style input: a scan, not a typed name. Goes straight to the API (one round trip). */
 const isBarcodeLike = (value: string) => /^\d{8,14}$/.test(value);
+type Props = { disabled?: boolean; inputRef: RefObject<HTMLInputElement | null>; onScan: (barcode: string) => Promise<boolean>; onPick: (product: Product) => Promise<boolean>; onNewProduct?: () => void; notify: (text: string) => void };
+function relevance(product: Product, query: string) { const q = query.toLocaleLowerCase(); const name = product.name.toLocaleLowerCase(); const barcode = (product.barcode ?? "").toLocaleLowerCase(); if (barcode === q) return 0; if (barcode.startsWith(q)) return 1; if (name.startsWith(q)) return 2; if (barcode.includes(q)) return 3; return 4; }
 
-type Props = {
-  disabled?: boolean;
-  inputRef: RefObject<HTMLInputElement | null>;
-  /** Scanner path: adds a scanned/typed code to the active sale. Resolves true when the line was added. */
-  onScan: (barcode: string) => Promise<boolean>;
-  /** Manual pick from the name search; callers receive the catalog snapshot they need for their cart. */
-  onPick: (product: Product) => Promise<boolean>;
-  notify: (text: string) => void;
-};
-
-/**
- * Scanner-first field. Query and results live here so typing/scanning never re-renders the cart or the payment panel.
- * Enter or a scanner burst on a barcode-like value adds it directly; anything else is a name/partial-code search.
- */
-export function ScanBar({ disabled, inputRef, onScan, onPick, notify }: Props) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
-
-  async function add(barcode: string) {
-    setQuery(""); setResults([]);
-    await onScan(barcode);
-  }
-
-  async function pick(product: Product) {
-    setQuery(""); setResults([]);
-    await onPick(product);
-  }
-
-  async function submit(raw: string) {
-    const value = raw.trim();
-    if (!value || disabled) return;
-    if (isBarcodeLike(value)) return add(value); // clear at once so the next scan never appends to a stale code
-    try {
-      const found = await api.search(value);
-      if (found.length === 1 || (found[0]?.barcode && found[0].barcode === value)) return pick(found[0]);
-      setResults(found);
-      if (!found.length) notify(`No hay productos que coincidan con "${value}".`);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "No fue posible buscar el producto.");
-    }
-  }
-
-  return (
-    <div className="sale-scan">
-      <SearchBar
-        label="Escanear código o buscar producto"
-        placeholder="Escanea un código o busca por nombre"
-        value={query}
-        onChange={value => { setQuery(value); if (!value) setResults([]); }}
-        onSubmit={value => void submit(value)}
-        scanner
-        autoFocus
-        module="ventas"
-        inputRef={inputRef}
-      />
-      {results.length > 0 && (
-        <ul className="sale-results" aria-label="Resultados de búsqueda">
-          {results.map(product => (
-            <li key={product.id}>
-              <button type="button" className="sale-result" onClick={() => void pick(product)}>
-                <span className="sale-result__name">{product.name}<small>{product.barcode ?? "Sin código"} · Stock {Number(product.stock)}</small></span>
-                <strong className="ui-num">{money.format(Number(product.sale_price))}</strong>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+export function ScanBar({ disabled, inputRef, onScan, onPick, onNewProduct, notify }: Props) {
+  const [query, setQuery] = useState(""); const [results, setResults] = useState<Product[]>([]); const [highlighted, setHighlighted] = useState(0); const requestId = useRef(0);
+  useEffect(() => { const value = query.trim(); const id = ++requestId.current; if (!value || isBarcodeLike(value) || disabled) { setResults([]); setHighlighted(0); return; } const timer = window.setTimeout(() => { void api.search(value).then(found => { if (id !== requestId.current) return; setResults([...found].sort((a, b) => relevance(a, value) - relevance(b, value) || a.name.localeCompare(b.name))); setHighlighted(0); }).catch(error => { if (id === requestId.current) notify(error instanceof Error ? error.message : "No fue posible buscar el producto."); }); }, 200); return () => window.clearTimeout(timer); }, [query, disabled, notify]);
+  function clear() { setQuery(""); setResults([]); setHighlighted(0); }
+  async function add(barcode: string) { clear(); await onScan(barcode); }
+  async function pick(product: Product) { clear(); await onPick(product); }
+  async function submit(raw: string) { const value = raw.trim(); if (!value || disabled) return; if (isBarcodeLike(value)) return add(value); if (results[highlighted]) return pick(results[highlighted]); try { const found = await api.search(value); const sorted = [...found].sort((a, b) => relevance(a, value) - relevance(b, value) || a.name.localeCompare(b.name)); if (sorted.length === 1 || sorted[0]?.barcode === value) return pick(sorted[0]); setResults(sorted); setHighlighted(0); if (!sorted.length) notify(`No hay productos que coincidan con "${value}".`); } catch (error) { notify(error instanceof Error ? error.message : "No fue posible buscar el producto."); } }
+  function keyDown(event: React.KeyboardEvent<HTMLInputElement>) { if (event.key === "ArrowDown" && results.length) { event.preventDefault(); setHighlighted(index => (index + 1) % results.length); } else if (event.key === "ArrowUp" && results.length) { event.preventDefault(); setHighlighted(index => (index - 1 + results.length) % results.length); } else if (event.key === "Escape" && results.length) { event.preventDefault(); clear(); } else if (event.key === "Enter" && results[highlighted]) { event.preventDefault(); void pick(results[highlighted]); } }
+  return <div className="sale-scan"><SearchBar label="Escanear código o buscar producto" placeholder="Escanea un código o busca por nombre" value={query} onChange={value => setQuery(value)} onSubmit={value => void submit(value)} onKeyDown={keyDown} scanner autoFocus module="ventas" inputRef={inputRef} />{onNewProduct && <button type="button" className="ui-btn ui-btn--secondary sale-new-product" onClick={onNewProduct} disabled={disabled}>Nuevo producto</button>}{results.length > 0 && <ul className="sale-results" role="listbox" aria-label="Resultados de búsqueda">{results.map((product, index) => <li key={product.id} role="option" aria-selected={index === highlighted}><button type="button" className={`sale-result${index === highlighted ? " is-highlighted" : ""}`} onMouseEnter={() => setHighlighted(index)} onClick={() => void pick(product)}><span className="sale-result__name">{product.name}<small>{product.barcode ?? "Sin código"} · Stock {Number(product.stock)}</small></span><strong className="ui-num">{money.format(Number(product.sale_price))}</strong></button></li>)}</ul>}</div>;
 }

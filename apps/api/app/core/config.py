@@ -5,6 +5,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://pos:pos@localhost:5432/pos"
     cors_origins: str = "http://localhost:3000"
     commercial_rounding_policy: str = "round_up_500"
+    # Receipt AI is opt-in. A key alone never causes supplier documents to leave the POS.
+    receipt_ai_vision_enabled: bool = False
+    receipt_ai_openai_api_key: str = ""
+    receipt_ai_openai_model: str = "gpt-6-luna"
+    receipt_ai_openai_base_url: str = "https://api.openai.com/v1"
+    receipt_ai_openai_timeout_seconds: int = 90
+    # Receipt-to-purchase writes are disabled by default. Enable only in an
+    # explicitly isolated/authorized environment such as pos_sim.
+    receipt_ai_write_enabled: bool = False
 
     # Alegra electronic invoicing. Disabled by default; credentials live only
     # here (env vars), never hardcoded, never logged, never sent to the client.

@@ -85,7 +85,9 @@ export default function SalesPage() {
   }, [productOpen]);
 
   const active = sales.find(sale => sale.id === activeId);
-  const consumptionActive = consumption?.id === activeId;
+  // A missing stored activeId used to make `undefined === undefined` true here. That
+  // incorrectly selected a null consumption cart on a fresh session and crashed the page.
+  const consumptionActive = Boolean(consumption && consumption.id === activeId);
   const cartItems = consumptionActive ? consumption!.items : active?.items ?? [];
   const activeRef = useRef<Sale | undefined>(undefined);
   const chargingRef = useRef(false);     // a second tap before React re-renders the disabled COBRAR
@@ -145,7 +147,8 @@ export default function SalesPage() {
     // Only keep UI drafts of sales that are still open (completed/cancelled ones would just accumulate).
     setDrafts(Object.fromEntries(Object.entries(stored.drafts ?? {}).filter(([id]) => list.some(sale => sale.id === id))));
     setLastSaleId(stored.lastSaleId ?? ""); setConsumption(stored.consumption ?? null);
-    setActiveId(stored.consumption?.id === stored.activeId || list.some(sale => sale.id === stored.activeId) ? stored.activeId! : list[0]?.id ?? "");
+    const storedActiveId = stored.activeId;
+    setActiveId(storedActiveId && (stored.consumption?.id === storedActiveId || list.some(sale => sale.id === storedActiveId)) ? storedActiveId : list[0]?.id ?? "");
     setPhase("ready");
   }, []);
   useEffect(() => { void load(); }, [load]);

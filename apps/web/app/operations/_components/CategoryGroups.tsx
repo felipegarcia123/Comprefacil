@@ -7,12 +7,13 @@ type CategoryRow = DailyOperationsSummary["categories"][number];
 // OperationalCategory.display_order (a seed-time default, not a UX decision).
 const GROUP_ORDER = ["CIGARROS", "LICORES", "MASCOTAS_CON_CODIGO", "MASCOTAS_SIN_CODIGO", "BULTOS", "SUPER"];
 const ZERO_ROW = { cash: "0", electronic: "0", other: "0", total: "0", channels: [] as CategoryRow["channels"] };
+const DISPLAY_NAMES: Record<string, string> = { MASCOTAS_SIN_CODIGO: "Mascotas sin código", BULTOS: "Bultos" };
 
 export function groupRows(summary: DailyOperationsSummary | null, categories: OperationalCategory[]) {
   const byCode = new Map((summary?.categories ?? []).map(row => [row.category_code, row]));
   const nameByCode = new Map(categories.map(c => [c.code, c.name]));
   const primary = GROUP_ORDER.map(code => byCode.get(code) ?? {
-    category_code: code, category_name: nameByCode.get(code) ?? code, ...ZERO_ROW,
+    category_code: code, category_name: DISPLAY_NAMES[code] ?? nameByCode.get(code) ?? code, ...ZERO_ROW,
   });
   // SIN_CLASIFICAR (and any other code outside the fixed groups) is shown separately, never merged into SUPER.
   const extra = (summary?.categories ?? []).filter(row => !GROUP_ORDER.includes(row.category_code) && Number(row.total) !== 0);

@@ -21,7 +21,11 @@ export function OperationalSessionProvider({ children }: { children: React.React
     catch { setError(true); }
     finally { setLoading(false); inFlight.current = false; }
   }, []);
-  useEffect(() => { void refresh(); window.addEventListener("operational-session-changed", refresh); return () => window.removeEventListener("operational-session-changed", refresh); }, [refresh]);
+  useEffect(() => {
+    const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+    if (demoMode) { void refresh(); return; }
+    void refresh(); window.addEventListener("operational-session-changed", refresh); return () => window.removeEventListener("operational-session-changed", refresh);
+  }, [refresh]);
   return <OperationalSessionContext.Provider value={{summary, loading, error, refresh}}>{children}</OperationalSessionContext.Provider>;
 }
 export function useOperationalSession() { const context = useContext(OperationalSessionContext); if (!context) throw new Error("OperationalSessionProvider requerido"); return context; }

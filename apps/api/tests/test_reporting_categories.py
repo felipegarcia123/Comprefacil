@@ -1,4 +1,4 @@
-from app.services.reporting_categories import BULTOS, reporting_category
+from app.services.reporting_categories import BULTOS, reporting_category, reporting_category_name
 
 
 def test_only_explicit_bulto_markers_split_the_combined_stored_category():
@@ -11,3 +11,9 @@ def test_only_explicit_bulto_markers_split_the_combined_stored_category():
 def test_ambiguous_historical_catalog_lines_remain_in_their_stored_group():
     # There is no reliable bulto marker on this historical catalog line; do not guess.
     assert reporting_category("MASCOTAS_SIN_CODIGO") == "MASCOTAS_SIN_CODIGO"
+
+
+def test_split_groups_override_the_legacy_persisted_label_only_for_presentation():
+    stored = {"MASCOTAS_SIN_CODIGO": "Mascotas sin código / Bultos"}
+    assert reporting_category_name("MASCOTAS_SIN_CODIGO", stored) == "Mascotas sin código"
+    assert reporting_category_name(BULTOS, stored) == "Bultos"

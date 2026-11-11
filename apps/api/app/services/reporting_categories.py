@@ -17,6 +17,7 @@ from __future__ import annotations
 
 MASCOTAS_SIN_CODIGO = "MASCOTAS_SIN_CODIGO"
 BULTOS = "BULTOS"
+MASCOTAS_SIN_CODIGO_NAME = "Mascotas sin código"
 BULTOS_NAME = "Bultos"
 
 
@@ -31,7 +32,9 @@ def reporting_category(code: str | None, *, manual_kind: str | None = None,
 
 
 def reporting_category_name(code: str, stored_names: dict[str, str]) -> str:
-    """Name the virtual code while preserving names supplied by the database."""
+    """Return independent presentation labels without changing the stored category."""
+    if code == MASCOTAS_SIN_CODIGO:
+        return MASCOTAS_SIN_CODIGO_NAME
     return BULTOS_NAME if code == BULTOS else stored_names.get(code, code)
 
 

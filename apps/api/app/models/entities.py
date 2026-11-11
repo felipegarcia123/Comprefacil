@@ -106,6 +106,32 @@ class Product(Base):
         return value or None
 
 
+class ReceiptEquivalence(Base):
+    """Human-confirmed supplier material-code mapping for receipt drafts only."""
+    __tablename__ = "receipt_equivalences"
+    __table_args__ = (
+        Index("uq_receipt_equivalences_active_code", "provider", "material_code", unique=True,
+              postgresql_where=text("active"), sqlite_where=text("active = 1")),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String(120), index=True)
+    material_code: Mapped[str] = mapped_column(String(64), index=True)
+    product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id"), index=True)
+    product_name_snapshot: Mapped[str] = mapped_column(String(180))
+    source_description: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    source_brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_variant: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_size: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    confirmation_method: Mapped[str] = mapped_column(String(40), default="manual", server_default=text("'manual'"))
+    confirmed_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), index=True)
+    deactivated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class CashSession(Base):
     __tablename__ = "cash_sessions"
     __table_args__ = (Index(

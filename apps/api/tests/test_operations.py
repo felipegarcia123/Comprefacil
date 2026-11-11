@@ -150,6 +150,7 @@ def test_bultos_are_split_in_summary_without_changing_total_or_manual_marker(ope
     summary = client.get("/api/v1/daily-operations/summary").json()
     rows = {row["category_code"]: row for row in summary["categories"]}
     assert rows["BULTOS"]["category_name"] == "Bultos"
+    assert rows["MASCOTAS_SIN_CODIGO"]["category_name"] == "Mascotas sin código"
     assert Decimal(rows["BULTOS"]["cash"]) == Decimal("145000")
     assert Decimal(rows["BULTOS"]["electronic"]) == Decimal("55000")
     assert Decimal(rows["BULTOS"]["total"]) == Decimal("200000")

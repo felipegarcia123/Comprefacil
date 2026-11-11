@@ -1,12 +1,17 @@
 import { AuditListItem, AuditReport, AuditSection, PhysicalAudit, AppliedPrice, BlockedSales, CatalogSyncPage, CatalogSyncResult, CatalogSyncState, CatalogSyncStatus, PriorityPosProduct, CutoverReport, SalesCoverage, CardType, CatalogCoverage, CutoverReadiness, InvoiceDetail, InvoicePage, InvoicingMode, InvoicingScope, InvoicingSummary, UnmappedProductPage, InvoiceDisplayState, CashHistoryRow, Customer, CustomerCreateResult, CustomerInput, CustomerSyncResult, CustomerSyncStatus, ElectronicInvoiceIntent, GranelSettlement, ManualItemKind, ReconciliationBlock1, InvoicePreview, CashMovement, CashSummary, CurrentReport, DashboardReport, DailyOperationsSummary, DailyReportListItem, DailyReportOut, ElectronicInvoice, ElectronicInvoiceConfigStatus, CountConfirmBody, CountConfirmResult, CountPreview, Expense, InternalConsumption, InternalConsumptionBatch, InventoryDetail, InventoryMovement, InventoryPage, InventorySort, MonthlyReport, OperationalCategory, PaymentChannel, PaymentSummary, Product, ProductCatalog, ProductImportPreview, ProductImportResult, ProductInput, Purchase, Sale, SaleSource, Supplier, SupplierDetail, WithdrawalReason, SaleDetail, ReturnReason, ExchangePreview, ExchangeReplacementInput, UnitSource, BusinessAccount, AccountReconciliation, AccountMovement, AccountsHistory, InventoryValuation, PatrimonyDeclaration, PatrimonyHistory, PatrimonySource } from "./types";
 import { RoundingPolicy } from "./pricing";
+import { demoRequest } from "./demoApi";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+// No local fallback in browser builds. A public demo must never reach a developer
+// machine or an operational POS by accident.
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+const API = IS_DEMO ? "" : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1");
 
 /** Shared by createPurchase (POST) and updatePurchase (PUT, which replaces the whole item list). */
 type PurchaseBody = { supplier_id: string; invoice_number?: string; notes?: string; items: { product_id: string; quantity: number; unit_cost: number }[] };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (IS_DEMO) return demoRequest<T>(path, init);
   let response: Response;
   try {
     response = await fetch(`${API}${path}`, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
@@ -134,6 +139,13 @@ export const api = {
   auditCountTemplateUrl: (id: string) => `${API}/physical-audits/${id}/count-template`,
   previewProductImport: (body: { filename:string; content:string; mapping:Record<string,string>; delimiter:"auto"|","|";" }) => request<ProductImportPreview>("/products/import/preview", { method:"POST", body:JSON.stringify(body) }),
   confirmProductImport: (body: { filename:string; content:string; mapping:Record<string,string>; delimiter:"auto"|","|";" }) => request<ProductImportResult>("/products/import/confirm", { method:"POST", body:JSON.stringify(body) }),
+  receiptCatalogDiagnostic: () => request<import("./types").ReceiptCatalogDiagnostic>("/receipt-ai/catalog-diagnostic"),
+  receiptCandidates: (q:string, barcode?:string, provider?:string, material_code?:string) => request<import("./types").ReceiptCandidate[]>(`/receipt-ai/candidates?${new URLSearchParams({ q, ...(barcode ? { barcode } : {}), ...(provider ? { provider } : {}), ...(material_code ? { material_code } : {}) })}`),
+  receiptEquivalences: (params: { provider?: string; material_code?: string; active?: boolean } = {}) => request<import("./types").ReceiptEquivalence[]>(`/receipt-ai/equivalences?${new URLSearchParams({ ...(params.provider ? { provider: params.provider } : {}), ...(params.material_code ? { material_code: params.material_code } : {}), ...(params.active === undefined ? {} : { active: String(params.active) }) })}`),
+  confirmReceiptEquivalence: (body: { provider:string; material_code:string; product_id:string; source_description?:string|null; source_brand?:string|null; source_variant?:string|null; source_size?:string|null }) => request<import("./types").ReceiptEquivalence>("/receipt-ai/equivalences", { method:"POST", body:JSON.stringify(body) }),
+  setReceiptEquivalenceActive: (id:string, active:boolean) => request<import("./types").ReceiptEquivalence>(`/receipt-ai/equivalences/${id}/active`, { method:"PATCH", body:JSON.stringify({ active }) }),
+  createReceiptPurchase: (body: { confirmed:boolean; supplier_id:string; invoice_number:string; purchased_at?:string; notes?:string|null; source_sha256?:string|null; items:{product_id:string; quantity:number; unit_cost:number}[] }) => request<Purchase>("/receipt-ai/purchase", { method:"POST", body:JSON.stringify(body) }),
+  analyzeReceipt: (body:{ filename:string; content_type:string; content_base64:string; vendor_hint?:string; region?:import("./types").ReceiptRegion|null }) => request<import("./types").ReceiptAnalysis>("/receipt-ai/analyze", { method:"POST", body:JSON.stringify(body) }),
   inventoryMovements: (params: { product_id?: string; movement_type?: string } = {}) => {
     const query = new URLSearchParams(params);
     return request<InventoryMovement[]>(`/inventory/movements?${query}`);

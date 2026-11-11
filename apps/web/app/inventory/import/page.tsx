@@ -5,7 +5,7 @@ import { ChangeEvent, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { ProductImportPreview, ProductImportResult, ProductImportRow } from "@/lib/types";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_DEMO_MODE === "1" ? "" : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1");
 const fields = [
   ["", "Ignorar columna"], ["barcode", "Código"], ["name", "Nombre"], ["category", "Categoría"],
   ["supplier", "Proveedor"], ["purchase_cost", "Costo de compra"], ["sale_price", "Precio de venta"],

@@ -1,0 +1,67 @@
+name: pos-simulation
+
+services:
+  db-sim:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pos_sim
+      POSTGRES_USER: pos_sim
+      POSTGRES_PASSWORD: pos_sim_local_only
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pos_sim_data:/var/lib/postgresql/data
+    networks: [simulation]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos_sim -d pos_sim"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api-sim:
+    image: pos-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://pos_sim:pos_sim_local_only@db-sim:5432/pos_sim
+      CORS_ORIGINS: http://localhost:3001
+      RECEIPT_AI_WRITE_ENABLED: "true"
+      RECEIPT_AI_VISION_ENABLED: "true"
+      RECEIPT_AI_OPENAI_API_KEY: ${RECEIPT_AI_OPENAI_API_KEY:-}
+      RECEIPT_AI_OPENAI_MODEL: ${RECEIPT_AI_OPENAI_MODEL:-gpt-6-luna}
+      RECEIPT_AI_OPENAI_BASE_URL: ${RECEIPT_AI_OPENAI_BASE_URL:-https://api.openai.com/v1}
+      RECEIPT_AI_OPENAI_TIMEOUT_SECONDS: ${RECEIPT_AI_OPENAI_TIMEOUT_SECONDS:-90}
+      ALEGRA_ENABLED: "false"
+      ALEGRA_AUTO_ISSUE: "false"
+      ALEGRA_AUTO_ISSUE_STAMP: "false"
+      ALEGRA_CATALOG_CREATE_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      db-sim:
+        condition: service_healthy
+    networks: [simulation]
+
+  web-sim:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8001/api/v1
+        NEXT_PUBLIC_ENVIRONMENT_LABEL: SIMULACIÓN
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8001/api/v1
+      NEXT_PUBLIC_ENVIRONMENT_LABEL: SIMULACIÓN
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - api-sim
+    networks: [simulation]
+
+networks:
+  # Dedicated project bridge: it is not shared with production, so `db-sim`
+  # cannot resolve or reach the production `db` service. It remains publishable
+  # on localhost for the local simulation UI.
+  simulation: {}
+
+volumes:
+  pos_sim_data:

@@ -16,8 +16,11 @@ from app.services.operational_session import require_open_session
 from app.services.pos import get_operator
 
 
-def _validate_supplier(db: Session, supplier_id: UUID, require_active: bool = True) -> Supplier:
-    supplier = db.get(Supplier, supplier_id)
+def _validate_supplier(db: Session, supplier_id: UUID, require_active: bool = True, lock: bool = False) -> Supplier:
+    stmt = select(Supplier).where(Supplier.id == supplier_id)
+    if lock:
+        stmt = stmt.with_for_update(of=Supplier)
+    supplier = db.scalar(stmt)
     if not supplier:
         raise HTTPException(404, "Proveedor no encontrado")
     if require_active and not supplier.active:
@@ -46,11 +49,19 @@ def _apply_items(purchase: Purchase, body: PurchaseCreate) -> None:
     purchase.total = purchase.subtotal
 
 
-def create_purchase(db: Session, body: PurchaseCreate) -> Purchase:
-    _validate_supplier(db, body.supplier_id)
+def create_purchase(db: Session, body: PurchaseCreate, *, enforce_invoice_unique: bool = False) -> Purchase:
+    supplier = _validate_supplier(db, body.supplier_id, lock=True)
+    if enforce_invoice_unique and body.invoice_number:
+        duplicate = db.scalar(select(Purchase.id).where(
+            Purchase.supplier_id == supplier.id,
+            Purchase.invoice_number == body.invoice_number.strip(),
+            Purchase.status != PurchaseStatus.CANCELLED,
+        ).limit(1))
+        if duplicate:
+            raise HTTPException(409, "Ya existe una compra con ese número de factura para este proveedor")
     _validated_products(db, body)
     purchase = Purchase(
-        supplier_id=body.supplier_id, invoice_number=body.invoice_number,
+        supplier_id=body.supplier_id, invoice_number=body.invoice_number.strip() if body.invoice_number else None,
         purchased_at=body.purchased_at or datetime.now(timezone.utc), notes=body.notes,
         created_by=get_operator(db).id, status=PurchaseStatus.DRAFT)
     _apply_items(purchase, body)

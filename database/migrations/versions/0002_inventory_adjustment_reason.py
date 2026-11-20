@@ -7,8 +7,8 @@ down_revision = "0001"
 
 
 def upgrade():
-    # 0001 builds from current metadata, so a brand-new database may already
-    # contain the column; existing 0001 databases still need it added.
+    # The frozen 0001 schema lacks this column. Keep the guard for databases
+    # that applied the former metadata-based 0001 revision.
     columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("inventory_movements")}
     if "reason" not in columns:
         op.add_column("inventory_movements", sa.Column("reason", sa.String(length=500), nullable=True))

@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Next.js typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build Next.js
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+        run: npm run build
+
+  api:
+    name: FastAPI tests and PostgreSQL migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: comprefacil_ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci_local_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d comprefacil_ci"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://ci:ci_local_only@127.0.0.1:5432/comprefacil_ci
+      PYTHONPATH: apps/api
+      ALEGRA_ENABLED: 'false'
+      ALEGRA_AUTO_ISSUE: 'false'
+      ALEGRA_AUTO_ISSUE_STAMP: 'false'
+      ALEGRA_MANUAL_ISSUE_ENABLED: 'false'
+      ALEGRA_CATALOG_CREATE_ENABLED: 'false'
+      RECEIPT_AI_VISION_ENABLED: 'false'
+      RECEIPT_AI_WRITE_ENABLED: 'false'
+      RECEIPT_AI_OPENAI_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install pinned backend dependencies
+        run: python -m pip install -r apps/api/requirements.txt
+      - name: Migrate empty PostgreSQL, validate schema, repeat upgrade
+        run: python -m app.scripts.ci_migration_check
+      - name: Seed fictitious data
+        run: python -m app.seed
+      - name: Run backend suite, including PostgreSQL integration tests
+        run: python -m pytest -q apps/api/tests

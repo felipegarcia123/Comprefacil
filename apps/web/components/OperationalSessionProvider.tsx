@@ -22,9 +22,9 @@ export function OperationalSessionProvider({ children }: { children: React.React
     finally { setLoading(false); inFlight.current = false; }
   }, []);
   useEffect(() => {
-    const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
-    if (demoMode) { void refresh(); return; }
-    void refresh(); window.addEventListener("operational-session-changed", refresh); return () => window.removeEventListener("operational-session-changed", refresh);
+    void refresh();
+    window.addEventListener("operational-session-changed", refresh);
+    return () => window.removeEventListener("operational-session-changed", refresh);
   }, [refresh]);
   return <OperationalSessionContext.Provider value={{summary, loading, error, refresh}}>{children}</OperationalSessionContext.Provider>;
 }

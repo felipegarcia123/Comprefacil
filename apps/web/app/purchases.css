@@ -77,6 +77,17 @@
 .purchase__receipt-meta dt { font-size: var(--text-micro); font-weight: 700; color: var(--color-ink-muted); }
 .purchase__receipt-meta dd { margin: 2px 0 0; font-size: var(--text-body); }
 
+.purchase-schedule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2); }
+@media (max-width: 639px) { .purchase-schedule-grid { grid-template-columns: minmax(0, 1fr); } }
+.purchase-schedule-line, .purchase-compare-line { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--color-line); border-radius: var(--radius-panel); background: var(--color-surface); }
+.purchase-schedule-line p, .purchase-compare-line p { margin: 0; }
+.purchase-compare-difference { color: var(--color-warning); font-weight: 700; }
+.purchase-finance-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2); }
+.purchase-finance-summary > div { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3); border: 1px solid var(--color-line); border-radius: var(--radius-panel); }
+.purchase-finance-summary small { color: var(--color-ink-muted); }
+.purchase-finance-summary strong { font-size: var(--text-subtitle); }
+.purchase-forecast-table { min-width: 740px; }
+
 /* Below 1200px the side panel eats the width: narrow the fixed columns so Producto keeps a readable width (mirrors sales.css). */
 @media (max-width: 1199px) {
   .purchase-col-cost { width: 110px; }

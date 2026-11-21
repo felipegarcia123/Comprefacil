@@ -6,7 +6,7 @@ import { History, LoaderCircle, PackageOpen, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { dateTime, errorText, money } from "@/lib/format";
 import { publishPurchaseContext } from "@/lib/workContexts";
-import type { InventoryDetail, PaymentChannel, Purchase, Supplier } from "@/lib/types";
+import type { InventoryDetail, PaymentChannel, Purchase, ReceiveComparisonIn, SchedulePurchaseIn, Supplier } from "@/lib/types";
 import type { RoundingPolicy } from "@/lib/pricing";
 import { ConfirmDialog, Display, InlineMessage, Sheet, Toldo, TouchButton } from "@/components/ui";
 import { useBreakpoint } from "@/lib/useBreakpoint";
@@ -17,6 +17,9 @@ import { HistorySheet } from "./_components/HistorySheet";
 import { PricingSheet } from "./_components/PricingSheet";
 import { ProductPicker } from "./_components/ProductPicker";
 import { ReceiveSheet } from "./_components/ReceiveSheet";
+import { ScheduleSheet } from "./_components/ScheduleSheet";
+import { PurchaseAgendaSheet } from "./_components/PurchaseAgendaSheet";
+import { paymentTermsLabel } from "@/lib/smartPurchasing";
 import { SupplierPicker } from "./_components/SupplierPicker";
 import { seedToLine, type DraftLine, type ProductSeed } from "./_components/types";
 
@@ -27,6 +30,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 // `activeDraftId` (only ever a DRAFT) is what the global ContextBar shows; `viewedId` is just "what's
 // on screen" and may also point at a RECEIVED/CANCELLED purchase opened from history for reference.
 const STORE_KEY = "pos.purchases.ui.v1";
+const PENDING_CREATE_KEY = "pos.purchases.pending-create.v1";
 type Stored = { viewedId?: string; activeDraftId?: string };
 function readStored(): Stored { try { return JSON.parse(sessionStorage.getItem(STORE_KEY) || "{}"); } catch { return {}; } }
 function writeStored(value: Stored) { try { sessionStorage.setItem(STORE_KEY, JSON.stringify(value)); } catch { /* storage may be unavailable */ } }
@@ -68,6 +72,8 @@ export default function PurchasesPage() {
   const [supplierPickerOpen, setSupplierPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -75,6 +81,7 @@ export default function PurchasesPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingCreate = useRef<{ body: ReturnType<typeof toBody>; key: string } | null>(null);
 
   const purchaseRef = useRef<Purchase | null>(null);
   useEffect(() => { purchaseRef.current = purchase; }, [purchase]);
@@ -153,12 +160,18 @@ export default function PurchasesPage() {
   // ---- supplier selection / new draft -----------------------------------------------------------
   function onSupplierChosen(supplier: Supplier) {
     setSupplierPickerOpen(false);
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(PENDING_CREATE_KEY) || "null") as typeof pendingCreate.current;
+      pendingCreate.current = saved?.body?.supplier_id === supplier.id && typeof saved.key === "string" ? saved : null;
+    } catch { pendingCreate.current = null; }
     if (purchase && purchase.status === "DRAFT") {
       setNotice({ tone: "info", text: `Tenías una compra en curso con ${purchase.supplier_name}; sigue guardada, retómala desde el historial.` });
     }
     setPurchase({ id: "", supplier_id: supplier.id, supplier_name: supplier.name, status: "DRAFT", invoice_number: null,
       purchased_at: new Date().toISOString(), received_at: null, notes: null, subtotal: "0", total: "0",
-      created_at: new Date().toISOString(), created_by: "", payment: null, items: [] });
+      created_at: new Date().toISOString(), created_by: "", payment: null, items: [],
+      scheduled_at: null, expected_delivery_date: null, payment_terms: null, payment_due_date: null,
+      estimated_total: null, offer_notes: null, paid_amount: "0", outstanding_amount: null });
     writeStored({});
     refocus();
   }
@@ -175,8 +188,14 @@ export default function PurchasesPage() {
       // First real content: this is the moment the DRAFT is actually created in the backend.
       setBusy(true);
       try {
-        const created = await api.createPurchase({ supplier_id: current.supplier_id, invoice_number: current.invoice_number || undefined, notes: current.notes || undefined,
-          items: [{ product_id: seed.id, quantity: line.quantity, unit_cost: line.purchase_cost }] });
+        pendingCreate.current ??= { key: crypto.randomUUID(), body: {
+          supplier_id: current.supplier_id, invoice_number: current.invoice_number || undefined, notes: current.notes || undefined,
+          items: [{ product_id: seed.id, quantity: line.quantity, unit_cost: line.purchase_cost }],
+        } };
+        try { sessionStorage.setItem(PENDING_CREATE_KEY, JSON.stringify(pendingCreate.current)); } catch { /* retry still works while mounted */ }
+        const created = await api.createPurchase(pendingCreate.current.body, pendingCreate.current.key);
+        pendingCreate.current = null;
+        try { sessionStorage.removeItem(PENDING_CREATE_KEY); } catch { /* storage may be unavailable */ }
         setPurchase(created); setSelectedId(seed.id);
         writeStored({ viewedId: created.id, activeDraftId: created.id });
         setSaveState("saved"); setSavedAt(new Date());
@@ -187,7 +206,7 @@ export default function PurchasesPage() {
 
     const items = existing
       ? current.items.map(item => item.product_id === seed.id ? { ...item, quantity: String(line.quantity), unit_cost: String(line.purchase_cost), line_total: String(line.quantity * line.purchase_cost) } : item)
-      : [...current.items, { id: seed.id, product_id: seed.id, product_name: seed.name, barcode: seed.barcode, quantity: String(line.quantity), unit_cost: String(line.purchase_cost), line_total: String(line.quantity * line.purchase_cost) }];
+      : [...current.items, { id: seed.id, product_id: seed.id, product_name: seed.name, barcode: seed.barcode, quantity: String(line.quantity), unit_cost: String(line.purchase_cost), line_total: String(line.quantity * line.purchase_cost), ordered_quantity: null, ordered_unit_cost: null, offer_list_unit_cost: null, offer_discount_per_unit: null, offer_note: null, difference_reason: null, actual_unit_cost: null, quantity_difference: null, unit_cost_difference: null, amount_difference: null }];
     const next = withLineTotals({ ...current, items });
     setPurchase(next); setSelectedId(seed.id);
     scheduleSave(next, true); // adding a line is a discrete action: save right away, not debounced
@@ -230,6 +249,52 @@ export default function PurchasesPage() {
     setNotice({ tone: "success", text: "Mercancía recibida y pago registrado." });
   }
 
+  async function payExisting(channelId: string, reference: string, notesValue: string) {
+    if (!purchase || purchase.status !== "RECEIVED") return;
+    const paid = await api.payPurchase(purchase.id, channelId, reference, notesValue);
+    setPurchase(paid); setReceiveOpen(false);
+    setNotice({ tone: "success", text: "Pago al proveedor registrado." });
+  }
+
+  async function scheduleOrder(body: SchedulePurchaseIn) {
+    if (!purchase?.id || purchase.status !== "DRAFT") return;
+    setBusy(true);
+    try {
+      if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+      await saveQueue.current;
+      // The server must hold the final draft before its ordered_* snapshot is frozen.
+      const saved = await api.updatePurchase(purchase.id, toBody(purchase));
+      const scheduled = await api.schedulePurchase(saved.id, body);
+      setPurchase(scheduled); setScheduleOpen(false);
+      writeStored({ viewedId: scheduled.id });
+      setNotice({ tone: "success", text: "Pedido programado. No se modificaron inventario ni caja." });
+    } catch (cause) {
+      // A lost response after a successful schedule must not strand the UI in DRAFT.
+      const latest = await api.purchase(purchase.id).catch(() => null);
+      if (latest?.status === "SCHEDULED") {
+        const confirmed = await api.schedulePurchase(latest.id, body).catch(() => null);
+        if (confirmed) {
+          setPurchase(confirmed); setScheduleOpen(false); writeStored({ viewedId: confirmed.id });
+          setNotice({ tone: "info", text: "El pedido ya quedó programado; se recuperó su estado desde el servidor." });
+          return;
+        }
+      }
+      throw cause;
+    } finally { setBusy(false); }
+  }
+
+  async function receiveScheduled(comparison: ReceiveComparisonIn, payment?: { channelId: string; reference: string; notes: string }) {
+    if (!purchase?.id || purchase.status !== "SCHEDULED") return;
+    setBusy(true);
+    try {
+      const received = payment
+        ? await api.receivePurchaseWithPayment(purchase.id, payment.channelId, payment.reference, payment.notes, comparison)
+        : await api.receivePurchase(purchase.id, comparison);
+      setPurchase(received); setReceiveOpen(false); writeStored({ viewedId: received.id });
+      setNotice({ tone: "success", text: payment ? "Mercancía recibida y pago real registrado." : "Mercancía recibida; obligación real registrada para el proveedor." });
+    } finally { setBusy(false); }
+  }
+
   async function cancelDraft() {
     if (!purchase) return;
     setBusy(true);
@@ -237,15 +302,15 @@ export default function PurchasesPage() {
       await api.cancelPurchase(purchase.id);
       setPurchase(null); setProductCache({}); setSelectedId("");
       writeStored({});
-      setNotice({ tone: "info", text: "Compra cancelada. El proveedor y las líneas quedan en el historial." });
+      setNotice({ tone: "info", text: "Compra cancelada. El pedido queda en el historial sin afectar inventario ni caja." });
     } catch (error) { setNotice({ tone: "danger", text: errorText(error) }); }
     finally { setBusy(false); setCancelOpen(false); }
   }
 
-  async function openFromHistory(row: Purchase) {
+  async function openPurchaseById(id: string) {
     setHistoryOpen(false);
     try {
-      const loaded = await api.purchase(row.id);
+      const loaded = await api.purchase(id);
       setPurchase(loaded);
       if (loaded.status === "DRAFT") {
         writeStored({ viewedId: loaded.id, activeDraftId: loaded.id });
@@ -257,6 +322,11 @@ export default function PurchasesPage() {
       }
       setSelectedId("");
     } catch (error) { setNotice({ tone: "danger", text: errorText(error) }); }
+  }
+
+  async function openFromAgenda(id: string) {
+    setAgendaOpen(false);
+    await openPurchaseById(id);
   }
 
   // ---- render -------------------------------------------------------------------------------------
@@ -280,8 +350,9 @@ export default function PurchasesPage() {
           {isDraft && <SaveIndicator state={saveState} savedAt={savedAt} />}
         </div>
         <div className="ui-row">
+          <TouchButton variant="secondary" onClick={() => setAgendaOpen(true)}>Agenda y previsión</TouchButton>
           <TouchButton variant="secondary" icon={History} onClick={() => setHistoryOpen(true)}>Historial</TouchButton>
-          <TouchButton module="compras" icon={Plus} onClick={() => setSupplierPickerOpen(true)}>Nueva compra</TouchButton>
+          <TouchButton module="compras" icon={Plus} disabled={busy} onClick={() => setSupplierPickerOpen(true)}>Nueva compra</TouchButton>
         </div>
       </div>
 
@@ -292,7 +363,7 @@ export default function PurchasesPage() {
           <div className="sale-closed" data-module="compras">
             <PackageOpen size={48} aria-hidden="true" />
             <h1>Empieza una compra</h1>
-            <p>Elige el proveedor que te está entregando mercancía para empezar a registrar productos.</p>
+            <p>Elige un proveedor para crear un borrador, programar una entrega o registrar una compra.</p>
             <TouchButton module="compras" size="xl" onClick={() => setSupplierPickerOpen(true)}>Elegir proveedor</TouchButton>
           </div>
         </div>
@@ -319,7 +390,7 @@ export default function PurchasesPage() {
             </section>
             {wide && (
               <section className="sale__panel purchase__panel" aria-label="Resumen de compra">
-                <PurchaseSummary purchase={purchase} units={units} onHistory={() => setHistoryOpen(true)} onReceive={() => setReceiveOpen(true)} onCancel={() => setCancelOpen(true)} />
+                <PurchaseSummary purchase={purchase} units={units} onHistory={() => setHistoryOpen(true)} onReceive={() => setReceiveOpen(true)} onSchedule={() => setScheduleOpen(true)} onCancel={() => setCancelOpen(true)} />
               </section>
             )}
           </div>
@@ -327,32 +398,37 @@ export default function PurchasesPage() {
             <div className="sale__dock">
               <Display size="figure" label="Total compra" value={money.format(Number(purchase.total))} caption={`${purchase.items.length} ${purchase.items.length === 1 ? "referencia" : "referencias"}`} tickKey={purchase.total} live />
               <TouchButton size="cta" module="compras" onClick={() => setSummaryOpen(true)}>RECIBIR</TouchButton>
+              <TouchButton variant="secondary" module="compras" onClick={() => setScheduleOpen(true)}>Programar pedido</TouchButton>
             </div>
           )}
           <Sheet open={!wide && summaryOpen} title="Resumen de compra" module="compras" onClose={() => setSummaryOpen(false)}>
-            {!wide && summaryOpen && <PurchaseSummary purchase={purchase} units={units} onHistory={() => { setSummaryOpen(false); setHistoryOpen(true); }} onReceive={() => { setSummaryOpen(false); setReceiveOpen(true); }} onCancel={() => { setSummaryOpen(false); setCancelOpen(true); }} />}
+            {!wide && summaryOpen && <PurchaseSummary purchase={purchase} units={units} onHistory={() => { setSummaryOpen(false); setHistoryOpen(true); }} onReceive={() => { setSummaryOpen(false); setReceiveOpen(true); }} onSchedule={() => { setSummaryOpen(false); setScheduleOpen(true); }} onCancel={() => { setSummaryOpen(false); setCancelOpen(true); }} />}
           </Sheet>
         </>
       ) : (
-        <ReceiptView purchase={purchase} onReceive={() => setReceiveOpen(true)} cajaOpen={cajaOpen} />
+        <ReceiptView purchase={purchase} onReceive={() => setReceiveOpen(true)} onCancel={() => setCancelOpen(true)} cajaOpen={cajaOpen} />
       )}
 
       <SupplierPicker open={supplierPickerOpen} onClose={() => setSupplierPickerOpen(false)} onSelect={onSupplierChosen} />
-      <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} onOpenPurchase={row => void openFromHistory(row)} />
+      <HistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} onOpenPurchase={row => void openPurchaseById(row.id)} />
+      <PurchaseAgendaSheet open={agendaOpen} close={() => setAgendaOpen(false)} openPurchase={id => void openFromAgenda(id)} />
+      {scheduleOpen && purchase?.status === "DRAFT" && <ScheduleSheet purchase={purchase} busy={busy} close={() => setScheduleOpen(false)} confirm={scheduleOrder} />}
       {detailLine && <PricingSheet line={detailLine} policy={policy} onClose={() => setDetailId("")} notify={text => setNotice({ tone: "info", text })}
         onChange={(id, patch) => changeLine(id, { quantity: patch.quantity, unit_cost: patch.purchase_cost })} />}
       {receiveOpen && purchase && (
-        <ReceiveSheet purchase={purchase} channels={channels} cajaOpen={cajaOpen} busy={busy} close={() => setReceiveOpen(false)}
-          confirm={async (channelId, reference, notesValue) => { setBusy(true); try { await receive(channelId, reference, notesValue); } finally { setBusy(false); } }} />
+        <ReceiveSheet key={purchase.id} purchase={purchase} channels={channels} cajaOpen={cajaOpen} busy={busy} close={() => setReceiveOpen(false)}
+          confirm={async (channelId, reference, notesValue) => { setBusy(true); try { await receive(channelId, reference, notesValue); } finally { setBusy(false); } }}
+          confirmExistingPayment={async (channelId, reference, notesValue) => { setBusy(true); try { await payExisting(channelId, reference, notesValue); } finally { setBusy(false); } }}
+          confirmScheduled={receiveScheduled} />
       )}
       <ConfirmDialog open={cancelOpen} module="compras" tone="danger" title="Cancelar esta compra" confirmLabel="Cancelar compra" cancelLabel="Volver" busy={busy} onCancel={() => setCancelOpen(false)} onConfirm={() => void cancelDraft()}>
-        El borrador con {purchase?.supplier_name} quedará cancelado. No se afecta inventario, costos ni caja; queda en el historial.
+        La compra pendiente con {purchase?.supplier_name} quedará cancelada. No se afecta inventario, costos ni caja; queda en el historial.
       </ConfirmDialog>
     </main>
   );
 }
 
-function PurchaseSummary({ purchase, units, onHistory, onReceive, onCancel }: { purchase: Purchase; units: number; onHistory: () => void; onReceive: () => void; onCancel: () => void }) {
+function PurchaseSummary({ purchase, units, onHistory, onReceive, onSchedule, onCancel }: { purchase: Purchase; units: number; onHistory: () => void; onReceive: () => void; onSchedule: () => void; onCancel: () => void }) {
   return (
     <>
       <div className="pay__top"><Display label="Total compra" value={money.format(Number(purchase.total))} caption={`${purchase.items.length} ${purchase.items.length === 1 ? "referencia" : "referencias"} · ${units} unidades`} tickKey={purchase.total} live /></div>
@@ -361,6 +437,7 @@ function PurchaseSummary({ purchase, units, onHistory, onReceive, onCancel }: { 
       </div>
       <div className="pay__cta">
         <TouchButton size="cta" module="compras" block disabled={!purchase.items.length} onClick={onReceive}>RECIBIR COMPRA</TouchButton>
+        <TouchButton variant="secondary" module="compras" block disabled={!purchase.id || !purchase.items.length} onClick={onSchedule}>Programar entrega</TouchButton>
         <TouchButton variant="ghost" className="sale-del" block onClick={onCancel}>Cancelar compra</TouchButton>
       </div>
     </>
@@ -374,25 +451,36 @@ function SaveIndicator({ state, savedAt }: { state: SaveState; savedAt: Date | n
   return null;
 }
 
-function ReceiptView({ purchase, onReceive, cajaOpen }: { purchase: Purchase; onReceive: () => void; cajaOpen: boolean }) {
+function ReceiptView({ purchase, onReceive, onCancel, cajaOpen }: { purchase: Purchase; onReceive: () => void; onCancel: () => void; cajaOpen: boolean }) {
+  const scheduled = purchase.status === "SCHEDULED";
+  const compared = purchase.status === "RECEIVED" && purchase.items.some(item => item.ordered_quantity !== null);
   return (
     <div className="purchase__receipt">
       <dl className="purchase__receipt-meta">
+        {purchase.invoice_number && <div><dt>Factura / referencia</dt><dd>{purchase.invoice_number}</dd></div>}
         <div><dt>Fecha de compra</dt><dd>{dateTime.format(new Date(purchase.purchased_at))}</dd></div>
         <div><dt>Fecha de recepción</dt><dd>{purchase.received_at ? dateTime.format(new Date(purchase.received_at)) : "Pendiente"}</dd></div>
-        <div><dt>Pago</dt><dd>{purchase.payment ? `Pagada · ${purchase.payment.channel_name}` : purchase.status === "RECEIVED" ? "Pendiente de pago" : "Pendiente de recepción"}</dd></div>
+        <div><dt>Pago</dt><dd>{purchase.payment ? `Pagada · ${purchase.payment.channel_name}` : purchase.status === "RECEIVED" ? "Pendiente de pago" : purchase.status === "CANCELLED" ? "Compra cancelada" : "Pendiente de recepción"}</dd></div>
+        {purchase.expected_delivery_date && <div><dt>Entrega prevista</dt><dd>{purchase.expected_delivery_date}</dd></div>}
+        {purchase.payment_terms && <div><dt>Condición de pago</dt><dd>{paymentTermsLabel[purchase.payment_terms]}</dd></div>}
+        {purchase.payment_due_date && <div><dt>Vencimiento pactado</dt><dd>{purchase.payment_due_date}</dd></div>}
+        {purchase.status === "RECEIVED" && purchase.outstanding_amount !== null && <div><dt>Obligación real pendiente</dt><dd>{money.format(Number(purchase.outstanding_amount))}</dd></div>}
       </dl>
       <div className="sale__cart">
         <div className="ui-table-wrap" data-module="compras">
           <table className="ui-table purchase-receipt-table">
-            <caption className="ui-sr-only">Productos recibidos</caption>
-            <thead><tr><th className="ui-th">Producto</th><th className="ui-th ui-th--num">Cantidad</th><th className="ui-th ui-th--num">Costo unitario</th><th className="ui-th ui-th--num">Subtotal</th></tr></thead>
-            <tbody>{purchase.items.map(item => <tr key={item.id} className="ui-tr"><td className="ui-td">{item.product_name}<small className="ui-td--muted">{item.barcode ?? "Sin código"}</small></td><td className="ui-td ui-td--num ui-num">{Number(item.quantity)}</td><td className="ui-td ui-td--num ui-num">{money.format(Number(item.unit_cost))}</td><td className="ui-td ui-td--num ui-num"><strong>{money.format(Number(item.line_total))}</strong></td></tr>)}</tbody>
+            <caption className="ui-sr-only">{scheduled ? "Productos pedidos" : "Productos recibidos"}</caption>
+            <thead><tr><th className="ui-th">Producto</th>{compared && <><th className="ui-th ui-th--num">Pedido</th><th className="ui-th ui-th--num">Costo pedido</th></>}<th className="ui-th ui-th--num">{purchase.status === "RECEIVED" ? "Cantidad recibida" : "Cantidad registrada"}</th><th className="ui-th ui-th--num">{purchase.status === "RECEIVED" ? "Costo real" : "Costo estimado"}</th><th className="ui-th ui-th--num">Subtotal</th></tr></thead>
+            <tbody>{purchase.items.map(item => <tr key={item.id} className="ui-tr"><td className="ui-td">{item.product_name}<small className="ui-td--muted">{item.barcode ?? "Sin código"}{item.offer_list_unit_cost !== null ? ` · Lista ${money.format(Number(item.offer_list_unit_cost))}, descuento ${money.format(Number(item.offer_discount_per_unit))}` : ""}{item.offer_note ? ` · Oferta: ${item.offer_note}` : ""}{item.difference_reason ? ` · Diferencia: ${item.difference_reason}` : ""}</small></td>{compared && <><td className="ui-td ui-td--num ui-num">{item.ordered_quantity ?? "—"}</td><td className="ui-td ui-td--num ui-num">{item.ordered_unit_cost === null ? "—" : money.format(Number(item.ordered_unit_cost))}</td></>}<td className="ui-td ui-td--num ui-num">{Number(item.quantity)}{item.quantity_difference !== null && !scheduled ? <small className="ui-td--muted">Δ {item.quantity_difference}</small> : null}</td><td className="ui-td ui-td--num ui-num">{!scheduled && compared && item.actual_unit_cost === null ? "No recibido" : money.format(Number(item.unit_cost))}</td><td className="ui-td ui-td--num ui-num"><strong>{money.format(Number(item.line_total))}</strong>{compared && item.amount_difference !== null && <small className="ui-td--muted">Δ {money.format(Number(item.amount_difference))}</small>}</td></tr>)}</tbody>
           </table>
         </div>
       </div>
-      <div className="purchase-subtotal"><span>TOTAL</span><strong className="ui-num">{money.format(Number(purchase.total))}</strong></div>
+      {purchase.estimated_total !== null && <p>Pedido estimado: <strong>{money.format(Number(purchase.estimated_total))}</strong></p>}
+      <div className="purchase-subtotal"><span>{scheduled ? "COMPROMISO ESTIMADO" : purchase.status === "RECEIVED" ? "TOTAL REAL DE COMPRA" : "TOTAL REGISTRADO"}</span><strong className="ui-num">{money.format(Number(purchase.total))}</strong></div>
       {purchase.notes && <p className="purchase-detail-code">{purchase.notes}</p>}
+      {purchase.offer_notes && <p className="purchase-detail-code">Oferta: {purchase.offer_notes}</p>}
+      {scheduled && <div className="ui-form__actions"><TouchButton module="compras" onClick={onReceive}>Recibir pedido</TouchButton><TouchButton variant="secondary" onClick={onCancel}>Cancelar pedido</TouchButton></div>}
+      {scheduled && !cajaOpen && <InlineMessage tone="warning" actions={<Link href="/cash" data-module="caja" className="ui-btn ui-btn--secondary ui-btn--md">Abrir caja</Link>}>Para confirmar la recepción debes abrir la jornada.</InlineMessage>}
       {purchase.status === "RECEIVED" && !purchase.payment && (
         <div className="ui-form__actions"><TouchButton module="compras" disabled={!cajaOpen} onClick={onReceive}>Registrar pago</TouchButton></div>
       )}

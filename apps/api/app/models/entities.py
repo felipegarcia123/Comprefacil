@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, func, text
@@ -10,7 +10,7 @@ from app.core.db import Base
 from app.domain.enums import (CashMovementType, ElectronicInvoiceProviderName,
                               ElectronicInvoiceStatus, ExpensePaymentSource,
                               InventoryMovementType, PaymentGroup, PaymentMethod,
-                              PurchaseStatus, SaleSource, SaleStatus, WithdrawalReason)
+                              PurchasePaymentTerms, PurchaseStatus, SaleSource, SaleStatus, WithdrawalReason)
 
 
 class User(Base):
@@ -322,6 +322,19 @@ class InventoryMovement(Base):
 
 class Purchase(Base):
     __tablename__ = "purchases"
+    __table_args__ = (
+        UniqueConstraint("creation_request_id", name="uq_purchases_creation_request_id"),
+        UniqueConstraint("receipt_request_id", name="uq_purchases_receipt_request_id"),
+        CheckConstraint("estimated_total IS NULL OR estimated_total >= 0", name="ck_purchases_estimated_total"),
+        CheckConstraint("payment_terms IS NULL OR payment_terms IN ('CASH_ON_DELIVERY','DIGITAL_ON_DELIVERY','CREDIT')",
+                        name="ck_purchases_payment_terms"),
+        CheckConstraint("status != 'SCHEDULED' OR (scheduled_at IS NOT NULL AND expected_delivery_date IS NOT NULL "
+                        "AND payment_terms IS NOT NULL AND estimated_total IS NOT NULL)",
+                        name="ck_purchases_schedule_complete"),
+        CheckConstraint("(payment_terms = 'CREDIT' AND payment_due_date IS NOT NULL) OR "
+                        "(payment_terms IS DISTINCT FROM 'CREDIT' AND payment_due_date IS NULL)",
+                        name="ck_purchases_payment_due_date"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     supplier_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("suppliers.id"), index=True)
     status: Mapped[PurchaseStatus] = mapped_column(
@@ -334,6 +347,17 @@ class Purchase(Base):
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expected_delivery_date: Mapped[date | None] = mapped_column(nullable=True, index=True)
+    payment_terms: Mapped[PurchasePaymentTerms | None] = mapped_column(
+        Enum(PurchasePaymentTerms, native_enum=False, length=20), nullable=True)
+    payment_due_date: Mapped[date | None] = mapped_column(nullable=True, index=True)
+    estimated_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    offer_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creation_request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    creation_request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    receipt_request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    receipt_request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     items: Mapped[list["PurchaseItem"]] = relationship(
         cascade="all, delete-orphan", lazy="selectin", order_by="PurchaseItem.id")
     payment: Mapped["SupplierPayment | None"] = relationship(lazy="joined", uselist=False)
@@ -341,7 +365,16 @@ class Purchase(Base):
 
 class PurchaseItem(Base):
     __tablename__ = "purchase_items"
-    __table_args__ = (UniqueConstraint("purchase_id", "product_id"),)
+    __table_args__ = (
+        UniqueConstraint("purchase_id", "product_id"),
+        CheckConstraint("ordered_quantity IS NULL OR ordered_quantity > 0", name="ck_purchase_items_ordered_quantity"),
+        CheckConstraint("ordered_unit_cost IS NULL OR ordered_unit_cost >= 0", name="ck_purchase_items_ordered_unit_cost"),
+        CheckConstraint("offer_discount_per_unit IS NULL OR offer_discount_per_unit >= 0",
+                        name="ck_purchase_items_offer_discount_per_unit"),
+        CheckConstraint("(offer_list_unit_cost IS NULL AND offer_discount_per_unit IS NULL) OR "
+                        "(offer_list_unit_cost IS NOT NULL AND offer_discount_per_unit IS NOT NULL)",
+                        name="ck_purchase_items_offer_pair"),
+    )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     purchase_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("purchases.id", ondelete="CASCADE"), index=True)
@@ -349,6 +382,14 @@ class PurchaseItem(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    # Frozen at scheduling. The existing quantity/unit_cost hold the draft estimate
+    # until receipt and the actual values thereafter; these snapshots never change.
+    ordered_quantity: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
+    ordered_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    offer_list_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    offer_discount_per_unit: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    offer_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    difference_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class SupplierPayment(Base):

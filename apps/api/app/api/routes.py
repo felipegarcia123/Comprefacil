@@ -32,6 +32,7 @@ from app.api.physical_audits import router as physical_audits_router
 from app.api.post_sale import router as post_sale_router
 from app.api.patrimony import router as patrimony_router
 from app.api.receipt_ai import router as receipt_ai_router
+from app.api.business_agent import router as business_agent_router
 
 router = APIRouter()
 router.include_router(inventory_count_router)
@@ -52,6 +53,7 @@ router.include_router(post_sale_router)
 router.include_router(patrimony_router)
 router.include_router(invoicing_ops_router)  # after electronic_invoices: its GET /{invoice_id} is a catch-all
 router.include_router(receipt_ai_router)
+router.include_router(business_agent_router)
 
 
 @router.get("/health")

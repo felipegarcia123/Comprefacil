@@ -15,6 +15,20 @@ class Settings(BaseSettings):
     # explicitly isolated/authorized environment such as pos_sim.
     receipt_ai_write_enabled: bool = False
 
+    # Experimental business agent: separate read-only DB role and endpoint token.
+    # A receipt AI key is reused only with an explicit opt-in.
+    business_agent_enabled: bool = False
+    business_agent_access_token: str = ""
+    business_agent_database_url: str = ""
+    business_agent_openai_api_key: str = ""
+    business_agent_use_receipt_ai_key: bool = False
+    business_agent_model: str = "gpt-5.4-mini"
+    business_agent_max_turns: int = 4
+    business_agent_max_tool_calls: int = 7
+    business_agent_max_output_tokens: int = 600
+    business_agent_max_total_tokens: int = 8000
+    business_agent_timeout_seconds: int = 25
+
     # Alegra electronic invoicing. Disabled by default; credentials live only
     # here (env vars), never hardcoded, never logged, never sent to the client.
     alegra_enabled: bool = False

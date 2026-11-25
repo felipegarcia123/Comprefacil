@@ -40,6 +40,7 @@ export function moduleForPath(pathname: string): ModuleId | null {
 
 /** Secondary destinations kept reachable from the "Más" menu (they are not Home modules). */
 export const SECONDARY_LINKS = [
+  { href: "/business-ai", label: "Comprefácil AI", description: "Consulta indicadores del negocio" },
   { href: "/operations", label: "Resumen del día", description: "Ventas, gastos y efectivo de hoy" },
   { href: "/payment-channels", label: "Medios de pago", description: "Efectivo, transferencias y tarjetas" },
   { href: "/customers", label: "Clientes", description: "Para factura electrónica (Alegra)" },

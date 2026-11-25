@@ -32,6 +32,8 @@ jobs:
         run: npm run typecheck
       - name: Smart Purchasing frontend tests
         run: npm run test:smart-purchasing
+      - name: Business AI frontend unit tests
+        run: npm run test:business-ai:unit
       - name: Build Next.js
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1

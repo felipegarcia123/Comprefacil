@@ -38,7 +38,8 @@ def inventory_products_query() -> Select:
     last_purchase_cost = (select(PurchaseItem.unit_cost)
         .join(Purchase, Purchase.id == PurchaseItem.purchase_id)
         .where(PurchaseItem.product_id == Product.id,
-               Purchase.status == PurchaseStatus.RECEIVED)
+               Purchase.status == PurchaseStatus.RECEIVED,
+               PurchaseItem.quantity > 0)
         .order_by(Purchase.received_at.desc(), Purchase.created_at.desc())
         .limit(1).correlate(Product).scalar_subquery())
     return (select(Product, Supplier.name.label("supplier"),

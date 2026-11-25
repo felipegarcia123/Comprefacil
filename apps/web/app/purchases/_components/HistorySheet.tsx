@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { dateTime, errorText, money } from "@/lib/format";
 import type { Purchase, PurchaseStatus } from "@/lib/types";
 
-const FILTERS: ["" | PurchaseStatus, string][] = [["", "Todas"], ["DRAFT", "Borrador"], ["RECEIVED", "Recibidas"], ["CANCELLED", "Canceladas"]];
+const FILTERS: ["" | PurchaseStatus, string][] = [["", "Todas"], ["DRAFT", "Borrador"], ["SCHEDULED", "Programadas"], ["RECEIVED", "Recibidas"], ["CANCELLED", "Canceladas"]];
 
 type Props = {
   open: boolean;
@@ -21,6 +21,7 @@ export function HistorySheet({ open, onClose, onOpenPurchase }: Props) {
   const [status, setStatus] = useState<"" | PurchaseStatus>("");
   const [rows, setRows] = useState<Purchase[]>([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { if (!open) { setQuery(""); setStatus(""); } }, [open]);
   useEffect(() => {
@@ -28,7 +29,9 @@ export function HistorySheet({ open, onClose, onOpenPurchase }: Props) {
     const timer = setTimeout(() => { void load(); }, 200);
     return () => clearTimeout(timer);
     async function load() {
+      setLoading(true); setError("");
       try { setRows(await api.purchases(status)); } catch (e) { setError(errorText(e)); }
+      finally { setLoading(false); }
     }
   }, [open, status]);
 
@@ -46,16 +49,17 @@ export function HistorySheet({ open, onClose, onOpenPurchase }: Props) {
           ))}
         </div>
         {error && <p className="ui-field-error" role="alert">{error}</p>}
+        {loading && <p role="status">Cargando compras…</p>}
         <ul className="ui-menu-list">
           {filtered.map(purchase => (
             <li key={purchase.id}>
               <button type="button" className="ui-menu-link purchase-history-row" onClick={() => onOpenPurchase(purchase)}>
-                <span>{purchase.supplier_name}<small>{purchase.invoice_number ?? purchase.id.slice(0, 8)} · {dateTime.format(new Date(purchase.purchased_at))}</small></span>
-                <span className="purchase-history-row__end"><PurchaseStatusBadge status={purchase.status} /><b className="ui-num">{money.format(Number(purchase.total))}</b></span>
+                <span>{purchase.supplier_name}<small>{purchase.invoice_number ?? purchase.id.slice(0, 8)} · {purchase.status === "SCHEDULED" && purchase.expected_delivery_date ? `Entrega ${purchase.expected_delivery_date}` : dateTime.format(new Date(purchase.purchased_at))}</small></span>
+                <span className="purchase-history-row__end"><PurchaseStatusBadge status={purchase.status} /><b className="ui-num">{money.format(Number(purchase.status === "SCHEDULED" ? purchase.estimated_total : purchase.total))}</b></span>
               </button>
             </li>
           ))}
-          {!filtered.length && <p className="ui-empty-hint">Sin compras para este filtro.</p>}
+          {!loading && !error && !filtered.length && <li className="ui-empty-hint" role="status">{query.trim() ? "No hay compras que coincidan con la búsqueda." : status ? "No hay compras en este estado." : "Aún no hay compras registradas."}</li>}
         </ul>
       </div>
     </Sheet>

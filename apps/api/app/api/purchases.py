@@ -1,15 +1,20 @@
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.domain.enums import PurchaseStatus
 from app.models import Product, Purchase, Supplier
-from app.schemas.purchases import PurchaseCreate, PurchaseItemOut, PurchaseOut, ReceivePurchaseIn, SupplierPaymentIn, SupplierPaymentOut
+from app.schemas.purchases import (CommitmentsOut, PurchaseAgendaItemOut, PurchaseCreate, PurchaseItemOut,
+                                   PurchaseOut, ReceiveComparisonIn, ReceivePurchaseIn, SchedulePurchaseIn, SupplierPaymentIn,
+                                   SupplierPaymentOut)
 from app.services.purchases import (cancel_purchase, create_purchase, receive_purchase,
-                                    update_purchase, register_supplier_payment, receive_purchase_with_payment)
+                                    update_purchase, register_supplier_payment, receive_purchase_with_payment,
+                                    schedule_purchase, purchase_agenda, purchase_commitments)
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
@@ -27,6 +32,12 @@ def purchase_out(db: Session, purchase: Purchase) -> PurchaseOut:
         purchased_at=purchase.purchased_at, received_at=purchase.received_at,
         notes=purchase.notes, subtotal=purchase.subtotal, total=purchase.total,
         created_at=purchase.created_at, created_by=purchase.created_by,
+        scheduled_at=purchase.scheduled_at, expected_delivery_date=purchase.expected_delivery_date,
+        payment_terms=purchase.payment_terms, payment_due_date=purchase.payment_due_date,
+        estimated_total=purchase.estimated_total, offer_notes=purchase.offer_notes,
+        paid_amount=payment.amount if payment else Decimal("0"),
+        outstanding_amount=purchase.total - (payment.amount if payment else Decimal("0"))
+                           if purchase.status == PurchaseStatus.RECEIVED else None,
         payment=SupplierPaymentOut(id=payment.id, purchase_id=payment.purchase_id,
             supplier_id=payment.supplier_id, amount=payment.amount, payment_channel_id=payment.payment_channel_id,
             channel_name=payment.channel.name, payment_type=payment.channel.payment_type,
@@ -37,7 +48,21 @@ def purchase_out(db: Session, purchase: Purchase) -> PurchaseOut:
             product_name=products[item.product_id].name,
             barcode=products[item.product_id].barcode,
             quantity=item.quantity, unit_cost=item.unit_cost,
-            line_total=item.line_total) for item in purchase.items])
+            line_total=item.line_total, ordered_quantity=item.ordered_quantity,
+            ordered_unit_cost=item.ordered_unit_cost,
+            offer_list_unit_cost=item.offer_list_unit_cost,
+            offer_discount_per_unit=item.offer_discount_per_unit, offer_note=item.offer_note,
+            difference_reason=item.difference_reason,
+            actual_unit_cost=item.unit_cost if purchase.status == PurchaseStatus.RECEIVED and item.quantity > 0 else None,
+            quantity_difference=(item.quantity - item.ordered_quantity) if purchase.status == PurchaseStatus.RECEIVED
+                                and item.ordered_quantity is not None else None,
+            unit_cost_difference=(item.unit_cost - item.ordered_unit_cost) if purchase.status == PurchaseStatus.RECEIVED
+                                 and item.quantity > 0 and item.ordered_unit_cost is not None else None,
+            amount_difference=(item.line_total - (item.ordered_quantity * item.ordered_unit_cost).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP))
+                              if purchase.status == PurchaseStatus.RECEIVED and item.ordered_quantity is not None
+                              and item.ordered_unit_cost is not None else None)
+            for item in purchase.items])
 
 
 @router.get("", response_model=list[PurchaseOut])
@@ -54,8 +79,20 @@ def list_purchases(q: str = Query(default="", max_length=100),
 
 
 @router.post("", response_model=PurchaseOut, status_code=201)
-def new_purchase(body: PurchaseCreate, db: Session = Depends(get_db)):
-    return purchase_out(db, create_purchase(db, body))
+def new_purchase(body: PurchaseCreate, db: Session = Depends(get_db),
+                 idempotency_key: UUID | None = Header(default=None, alias="Idempotency-Key")):
+    return purchase_out(db, create_purchase(db, body, request_id=idempotency_key))
+
+
+@router.get("/agenda", response_model=list[PurchaseAgendaItemOut])
+def agenda(as_of: date | None = None, horizon_days: int = Query(default=30, ge=0, le=365),
+           db: Session = Depends(get_db)):
+    return purchase_agenda(db, as_of=as_of, horizon_days=horizon_days)
+
+
+@router.get("/commitments", response_model=CommitmentsOut)
+def commitments(date_from: date, date_to: date, db: Session = Depends(get_db)):
+    return purchase_commitments(db, date_from, date_to)
 
 
 @router.get("/{purchase_id}", response_model=PurchaseOut)
@@ -66,14 +103,19 @@ def purchase_detail(purchase_id: UUID, db: Session = Depends(get_db)):
     return purchase_out(db, purchase)
 
 
+@router.post("/{purchase_id}/schedule", response_model=PurchaseOut)
+def schedule(purchase_id: UUID, body: SchedulePurchaseIn, db: Session = Depends(get_db)):
+    return purchase_out(db, schedule_purchase(db, purchase_id, body))
+
+
 @router.put("/{purchase_id}", response_model=PurchaseOut)
 def edit_purchase(purchase_id: UUID, body: PurchaseCreate, db: Session = Depends(get_db)):
     return purchase_out(db, update_purchase(db, purchase_id, body))
 
 
 @router.post("/{purchase_id}/receive", response_model=PurchaseOut)
-def receive(purchase_id: UUID, db: Session = Depends(get_db)):
-    return purchase_out(db, receive_purchase(db, purchase_id))
+def receive(purchase_id: UUID, body: ReceiveComparisonIn | None = None, db: Session = Depends(get_db)):
+    return purchase_out(db, receive_purchase(db, purchase_id, body))
 
 @router.post("/{purchase_id}/receive-with-payment", response_model=PurchaseOut, status_code=201)
 def receive_with_payment(purchase_id: UUID, body: ReceivePurchaseIn, db: Session = Depends(get_db)):

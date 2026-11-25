@@ -1,9 +1,8 @@
 import { StatusBadge } from "@/components/ui";
 import type { PurchaseStatus } from "@/lib/types";
+import { purchaseStatusLabel } from "@/lib/smartPurchasing";
 
-/** DRAFT = editable draft; RECEIVED/CANCELLED are read-only history. Shared by /purchases and /suppliers. */
+/** Shared by purchases and suppliers. */
 export function PurchaseStatusBadge({ status }: { status: PurchaseStatus }) {
-  if (status === "DRAFT") return <StatusBadge tone="info">Borrador</StatusBadge>;
-  if (status === "RECEIVED") return <StatusBadge tone="success">Recibida</StatusBadge>;
-  return <StatusBadge tone="neutral">Cancelada</StatusBadge>;
+  return <StatusBadge tone={status === "RECEIVED" ? "success" : status === "CANCELLED" ? "neutral" : "info"}>{purchaseStatusLabel[status]}</StatusBadge>;
 }

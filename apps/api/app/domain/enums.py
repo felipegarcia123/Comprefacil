@@ -64,8 +64,15 @@ class InventoryMovementType(str, Enum):
 
 class PurchaseStatus(str, Enum):
     DRAFT = "DRAFT"
+    SCHEDULED = "SCHEDULED"
     RECEIVED = "RECEIVED"
     CANCELLED = "CANCELLED"
+
+
+class PurchasePaymentTerms(str, Enum):
+    CASH_ON_DELIVERY = "CASH_ON_DELIVERY"
+    DIGITAL_ON_DELIVERY = "DIGITAL_ON_DELIVERY"
+    CREDIT = "CREDIT"
 
 
 class CashMovementType(str, Enum):

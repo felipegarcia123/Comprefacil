@@ -7,6 +7,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:smart-purchasing": "node --experimental-strip-types --test tests/smartPurchasing.test.mjs",
+    "test:business-ai:unit": "node --experimental-strip-types --test tests/businessAi.test.mjs tests/businessNotifications.test.mjs",
+    "test:business-ai:e2e": "playwright test",
     "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "recharts": "^3.2.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",

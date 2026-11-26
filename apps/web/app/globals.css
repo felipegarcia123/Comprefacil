@@ -14,6 +14,7 @@
 @import "./electronic-invoicing.css";
 @import "./customers.css";
 @import "./accounts.css";
+@import "./business-ai.css";
 
 /*
  * Fase 6: se retiró todo el CSS heredado de Venta pre-Fase 2 (`.shell`/`.topbar`/`.tabs`/

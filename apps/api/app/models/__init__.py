@@ -1,4 +1,4 @@
-from app.models.entities import (CashMovement, CashSession, CashSessionScaleClosing, CatalogSyncOperation, CatalogSyncRun, Customer, DailyReport, ElectronicInvoice,
+from app.models.entities import (BusinessReminder, CashMovement, CashSession, CashSessionScaleClosing, CatalogSyncOperation, CatalogSyncRun, Customer, DailyReport, ElectronicInvoice,
                                  Expense, InternalConsumption, InternalConsumptionItem, InventoryMovement,
                                  OperationalCategory, Payment, PaymentChannel, PhysicalAudit, PhysicalAuditItem, PhysicalAuditUnknownCode, Product, ReceiptEquivalence,
                                  Purchase, PurchaseItem, SupplierPayment, Sale,
@@ -9,7 +9,7 @@ from app.models.entities import (CashMovement, CashSession, CashSessionScaleClos
                                  BusinessAccountSnapshotCorrection, InventoryValuationSnapshot,
                                  PatrimonyDeclaration, PatrimonyDeclarationCorrection, PatrimonySourceChange)
 
-__all__ = ["User", "Customer", "CatalogSyncOperation", "CatalogSyncRun", "Supplier", "Product", "Purchase", "PurchaseItem", "SupplierPayment", "CashSession", "CashSessionScaleClosing",
+__all__ = ["User", "BusinessReminder", "Customer", "CatalogSyncOperation", "CatalogSyncRun", "Supplier", "Product", "Purchase", "PurchaseItem", "SupplierPayment", "CashSession", "CashSessionScaleClosing",
            "Sale", "SaleNote", "SaleReturn", "SaleReturnLine", "SaleRefund", "PaymentCorrection", "SaleExchange", "SaleExchangeReturnLine", "SaleExchangeReplacementLine", "SaleExchangeSettlement", "SaleExternalItem", "SaleItem", "Payment", "SalePayment", "PaymentChannel",
            "InventoryMovement", "CashMovement", "OperationalCategory", "Expense", "ReceiptEquivalence",
            "InternalConsumption", "InternalConsumptionItem", "DailyReport", "ElectronicInvoice", "PhysicalAudit", "PhysicalAuditItem", "PhysicalAuditUnknownCode",

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Ellipsis, House, Menu } from "lucide-react";
+import { Ellipsis, House, Menu, Sparkles } from "lucide-react";
 import { useOperationalSession } from "@/components/OperationalSessionProvider";
 import { useOpenSalesCount, useWorkContexts } from "@/lib/workContexts";
 import { ContextBadge, MODULES, MODULE_ORDER, SECONDARY_LINKS, Sheet, StatusBadge, Toldo, TouchButton, moduleForPath } from "@/components/ui";
@@ -57,6 +57,10 @@ export function AppHeader() {
                   </Link>
                 );
               })}
+              <Link href="/business-ai" className="ui-appbar__link ui-appbar__ai" aria-current={pathname === "/business-ai" ? "page" : undefined} aria-label="Comprefácil AI" title="Comprefácil AI">
+                <Sparkles size={24} aria-hidden="true" />
+                <span className="ui-appbar__label">AI</span>
+              </Link>
             </nav>
             {current && <span className="ui-appbar__context"><ContextBadge module={current} label={current === "ventas" && openSales >= 2 ? `Ventas · ${openSales}` : current === "compras" && activePurchase ? activePurchase.label : MODULES[current].label} /></span>}
           </>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAgentReply } from "@/lib/businessAi";
-import { AI_COOKIE, aiConfig, noStoreHeaders, sameOrigin, validAiSession } from "@/lib/businessAiServer";
+import { AI_COOKIE, aiConfig, conversationSession, noStoreHeaders, sameOrigin, validAiSession } from "@/lib/businessAiServer";
 
 export const runtime = "nodejs";
 
@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
   const config = aiConfig();
   if (!config.enabled) return NextResponse.json({ error: "Comprefácil AI no está disponible." }, { status: 404, headers: noStoreHeaders });
   if (!sameOrigin(request)) return NextResponse.json({ error: "Solicitud no permitida." }, { status: 403, headers: noStoreHeaders });
-  if (!validAiSession(request.cookies.get(AI_COOKIE)?.value, config.sessionSecret)) {
+  const cookie = request.cookies.get(AI_COOKIE)?.value;
+  if (!validAiSession(cookie, config.sessionSecret)) {
     return NextResponse.json({ error: "La sesión de Comprefácil AI terminó. Ingresa de nuevo." }, { status: 401, headers: noStoreHeaders });
   }
   const body: unknown = await request.json().catch(() => null);
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
   try {
     const upstream = await fetch(config.backendUrl, {
       method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(35000),
-      headers: { "Authorization": `Bearer ${config.backendToken}`, "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${config.backendToken}`, "Content-Type": "application/json",
+        "X-Conversation-Session": conversationSession(cookie!, config.sessionSecret) },
       body: JSON.stringify({ question: question.trim() }),
     });
     if (!upstream.ok) {

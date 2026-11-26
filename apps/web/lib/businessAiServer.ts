@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 export const AI_COOKIE = "cf_ai_session";
@@ -25,22 +25,28 @@ export function safeEqual(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function signature(expires: string, secret: string): string {
-  return createHmac("sha256", secret).update(`v1.${expires}`).digest("hex");
+function signature(expires: string, nonce: string, secret: string): string {
+  return createHmac("sha256", secret).update(`v2.${expires}.${nonce}`).digest("hex");
 }
 
 export function createAiSession(secret: string, now = Date.now()): string {
   const expires = String(Math.floor(now / 1000) + SESSION_SECONDS);
-  return `v1.${expires}.${signature(expires, secret)}`;
+  const nonce = randomBytes(24).toString("hex");
+  return `v2.${expires}.${nonce}.${signature(expires, nonce, secret)}`;
 }
 
 export function validAiSession(cookie: string | undefined, secret: string, now = Date.now()): boolean {
   if (!cookie || !secret) return false;
   const parts = cookie.split(".");
-  if (parts.length !== 3 || parts[0] !== "v1" || !/^\d{10}$/.test(parts[1])) return false;
+  if (parts.length !== 4 || parts[0] !== "v2" || !/^\d{10}$/.test(parts[1])
+    || !/^[a-f0-9]{48}$/.test(parts[2]) || !/^[a-f0-9]{64}$/.test(parts[3])) return false;
   const expires = Number(parts[1]);
   if (expires <= Math.floor(now / 1000) || expires > Math.floor(now / 1000) + SESSION_SECONDS) return false;
-  return safeEqual(parts[2], signature(parts[1], secret));
+  return safeEqual(parts[3], signature(parts[1], parts[2], secret));
+}
+
+export function conversationSession(cookie: string, secret: string): string {
+  return createHmac("sha256", secret).update(`conversation.${cookie}`).digest("hex");
 }
 
 export function sameOrigin(request: NextRequest): boolean {

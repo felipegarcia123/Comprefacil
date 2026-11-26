@@ -11,6 +11,8 @@ const reply = {
   ignored_private_field: "mock-private-field-must-not-reach-browser",
 };
 
+const conversations = new Map();
+
 http.createServer(async (request, response) => {
   response.setHeader("Content-Type", "application/json");
   response.setHeader("Cache-Control", "no-store");
@@ -22,14 +24,22 @@ http.createServer(async (request, response) => {
     if (request.headers.authorization !== "Bearer synthetic-backend-token-32-chars") {
       response.writeHead(401).end(JSON.stringify({ detail: "Unauthorized" })); return;
     }
+    const session = request.headers["x-conversation-session"];
+    if (typeof session !== "string" || !/^[a-f0-9]{64}$/.test(session)) {
+      response.writeHead(400).end(JSON.stringify({ detail: "Missing server session" })); return;
+    }
     let body = "";
     for await (const chunk of request) body += chunk;
     const question = JSON.parse(body).question ?? "";
+    const previous = conversations.get(session);
+    if (!question.includes("error")) conversations.set(session, question);
     await new Promise(resolve => setTimeout(resolve, 1200));
     if (question.includes("error")) { response.writeHead(502).end(JSON.stringify({ detail: "mock provider error" })); return; }
     response.writeHead(200).end(JSON.stringify({
       ...reply,
-      answer: question.includes("inventario") ? "Hay 2 productos con stock bajo en los datos sintéticos." : reply.answer,
+      answer: question.includes("seguimiento")
+        ? previous ? "Seguimiento del período anterior con datos sintéticos." : "Contexto no disponible."
+        : question.includes("inventario") ? "Hay 2 productos con stock bajo en los datos sintéticos." : reply.answer,
       tools_used: question.includes("inventario") ? ["get_low_stock_products"] : reply.tools_used,
     }));
     return;

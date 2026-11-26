@@ -22,6 +22,7 @@ export default function BusinessAiPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [chatError, setChatError] = useState("");
   const [today, setToday] = useState("");
   const serial = useRef(0);
@@ -61,7 +62,7 @@ export default function BusinessAiPage() {
     }
   }
 
-  function newConversation() {
+  function clearConversation() {
     generation.current += 1;
     pending.current?.abort();
     pending.current = null;
@@ -71,8 +72,26 @@ export default function BusinessAiPage() {
     setBusy(false);
   }
 
+  async function newConversation() {
+    if (resetting) return;
+    setResetting(true);
+    generation.current += 1;
+    pending.current?.abort();
+    pending.current = null;
+    setBusy(false);
+    try {
+      const response = await fetch("/api/business-ai/session", { method: "PATCH", cache: "no-store" });
+      if (!response.ok) throw new Error(await parseError(response, "No se pudo iniciar una conversación nueva."));
+      clearConversation();
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "No se pudo iniciar una conversación nueva.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   async function closeAccess() {
-    newConversation();
+    clearConversation();
     try {
       const response = await fetch("/api/business-ai/session", { method: "DELETE", cache: "no-store" });
       if (!response.ok) throw new Error("No se pudo cerrar el acceso. Intenta nuevamente.");
@@ -84,7 +103,7 @@ export default function BusinessAiPage() {
 
   async function send(text: string) {
     const clean = text.trim();
-    if (access !== "ready" || busy || clean.length < 3 || clean.length > 600) return;
+    if (access !== "ready" || busy || resetting || clean.length < 3 || clean.length > 600) return;
     const run = ++generation.current;
     const controller = new AbortController();
     pending.current = controller;
@@ -120,8 +139,8 @@ export default function BusinessAiPage() {
       <div className="ai-heading">
         <div className="ai-heading__identity"><span className="ai-heading__icon"><Sparkles size={28} aria-hidden="true" /></span><div><p className="ai-eyebrow">ASISTENTE EXPERIMENTAL</p><h1>Comprefácil AI</h1><p>Preguntas claras sobre los datos de tu negocio.</p></div></div>
         {access === "ready" && <div className="ai-heading__actions">
-          <TouchButton variant="secondary" size="md" onClick={newConversation}><Plus size={20} aria-hidden="true" />Nueva conversación</TouchButton>
-          <TouchButton variant="ghost" size="md" onClick={() => void closeAccess()}><LogOut size={20} aria-hidden="true" />Cerrar acceso</TouchButton>
+          <TouchButton variant="secondary" size="md" onClick={() => void newConversation()} disabled={resetting}><Plus size={20} aria-hidden="true" />Nueva conversación</TouchButton>
+          <TouchButton variant="ghost" size="md" onClick={() => void closeAccess()} disabled={resetting}><LogOut size={20} aria-hidden="true" />Cerrar acceso</TouchButton>
         </div>}
       </div>
 
@@ -138,8 +157,8 @@ export default function BusinessAiPage() {
       {access === "ready" && <div className="ai-workspace">
         <section className="ai-prompts" aria-label="Consultas rápidas">
           <p className="ai-eyebrow">PARA EMPEZAR</p><h2>¿Qué quieres saber?</h2><p>Estas consultas usan la fecha comercial de Bogotá.</p>
-          <div className="ai-prompts__list">{suggestions.map(item => <button key={item.title} type="button" onClick={() => void send(item.question)} disabled={busy} className="ai-prompt"><span>{item.title}</span><small>{item.question}</small><ArrowRight size={18} aria-hidden="true" /></button>)}</div>
-          <p className="ai-prompts__note"><CircleHelp size={17} aria-hidden="true" />Cada pregunta se analiza por separado. El historial visible solo dura mientras esta página esté abierta.</p>
+          <div className="ai-prompts__list">{suggestions.map(item => <button key={item.title} type="button" onClick={() => void send(item.question)} disabled={busy || resetting} className="ai-prompt"><span>{item.title}</span><small>{item.question}</small><ArrowRight size={18} aria-hidden="true" /></button>)}</div>
+          <p className="ai-prompts__note"><CircleHelp size={17} aria-hidden="true" />Puedes hacer preguntas de seguimiento. El contexto vence tras 30 minutos de inactividad. Al recargar, el historial visible desaparece aunque el contexto aún puede existir. Nueva conversación lo reinicia.</p>
         </section>
         <section className="ai-chat" aria-label="Conversación">
           <div className="ai-chat__top"><div><h2>Conversación</h2><p>Datos consultados mediante herramientas de solo lectura</p></div><span className="ai-chat__status">Experimental</span></div>
@@ -158,8 +177,8 @@ export default function BusinessAiPage() {
           </div>
           <form className="ai-composer" onSubmit={event => { event.preventDefault(); void send(question); }}>
             <label className="ui-sr-only" htmlFor="ai-question">Escribe tu pregunta</label>
-            <textarea id="ai-question" placeholder="Pregunta sobre tu negocio…" rows={2} value={question} maxLength={600} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(question); } }} disabled={busy} />
-            <TouchButton type="submit" iconOnly icon={Send} label="Enviar pregunta" disabled={busy || question.trim().length < 3} />
+            <textarea id="ai-question" placeholder="Pregunta sobre tu negocio…" rows={2} value={question} maxLength={600} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(question); } }} disabled={busy || resetting} />
+            <TouchButton type="submit" iconOnly icon={Send} label="Enviar pregunta" disabled={busy || resetting || question.trim().length < 3} />
             <p>Solo consultas. No realiza ventas, compras ni cambios en el sistema.</p>
           </form>
         </section>

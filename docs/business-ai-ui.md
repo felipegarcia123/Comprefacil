@@ -1,10 +1,12 @@
-# Comprefácil AI: interfaz experimental (COMP-S2-003)
+# Comprefácil AI: interfaz experimental (COMP-S2-003 / COMP-S2-004)
 
 La ruta `/business-ai` aparece en la barra de módulos y en el menú. Muestra
 consultas rápidas, mensajes de la sesión, estados de carga y error, fuentes
-consultadas, períodos y limitaciones. El endpoint de COMP-S2-002 solo acepta
-`question`: **cada pregunta es independiente**. El historial es visual, vive
-solo en memoria del navegador y se pierde al recargar o abrir otra sesión.
+consultadas, períodos y limitaciones. El navegador solo envía `question`.
+Next.js deriva una sesión opaca desde una cookie aleatoria y la comunica a
+FastAPI. El backend conserva contexto breve durante 30 minutos de inactividad
+para permitir preguntas de seguimiento. El historial visible vive solo en la
+página y se pierde al recargar, aunque el contexto del backend puede continuar.
 
 ## Acceso y conexión
 
@@ -23,8 +25,8 @@ La página pide el código una vez y recibe una cookie firmada, HttpOnly,
 SameSite Strict, limitada a `/api/business-ai` y con vencimiento a las ocho
 horas. En producción la cookie exige HTTPS. Los POST comprueban el origen y la
 ruta de chat exige una sesión válida.
-El botón **Cerrar acceso** borra la cookie; **Nueva conversación** limpia solo
-los mensajes de la pantalla.
+El botón **Cerrar acceso** borra la cookie; **Nueva conversación** rota la
+cookie y limpia los mensajes, iniciando un contexto nuevo.
 La ruta de Next.js nunca acepta una URL de destino, token ni identidad de
 negocio del navegador. Tampoco entrega la clave de OpenAI. Mantener FastAPI
 protegido con su propia autenticación y rol PostgreSQL de solo lectura, según

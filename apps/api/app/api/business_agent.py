@@ -1,6 +1,7 @@
 """Experimental, authenticated channel-independent conversation endpoint."""
 
 from hmac import compare_digest
+import re
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import create_engine, text
@@ -11,6 +12,7 @@ from app.core.config import settings
 from app.schemas.business_agent import BusinessAgentRequest, BusinessAgentResponse
 from app.services.business_agent import (AgentLimitError, AgentProviderError,
                                          run_business_agent)
+from app.services.business_agent_conversations import conversations
 from app.services.business_analytics import BusinessAnalyticsSource, PosBusinessAnalytics
 
 
@@ -77,13 +79,21 @@ def get_agent_source(_: None = Depends(require_agent_auth)):
 @router.post("/chat", response_model=BusinessAgentResponse)
 async def chat(body: BusinessAgentRequest,
                _: None = Depends(require_agent_auth),
-               analytics: BusinessAnalyticsSource = Depends(get_agent_source)):
+               analytics: BusinessAnalyticsSource = Depends(get_agent_source),
+               x_conversation_session: str | None = Header(default=None)):
     if not settings.business_agent_openai_api_key and not (
             settings.business_agent_use_receipt_ai_key and settings.receipt_ai_openai_api_key):
         raise HTTPException(503, "Modelo no configurado")
     try:
+        if x_conversation_session is not None:
+            if not re.fullmatch(r"[a-f0-9]{64}", x_conversation_session):
+                raise HTTPException(400, "Sesion de conversacion invalida")
+            return await conversations.run("comprefacil_pos", x_conversation_session,
+                                           body.question.strip(), analytics)
         return await run_business_agent(body.question.strip(), analytics)
     except AgentLimitError as exc:
         raise HTTPException(429, "La consulta excedio los limites del agente") from exc
     except AgentProviderError as exc:
         raise HTTPException(502, "El proveedor de IA no esta disponible") from exc
+    except RuntimeError as exc:
+        raise HTTPException(429, "Demasiadas conversaciones activas") from exc

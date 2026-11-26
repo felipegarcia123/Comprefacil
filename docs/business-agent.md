@@ -1,9 +1,14 @@
-# Experimental business agent (COMP-S2-002)
+# Experimental business agent (COMP-S2-002 / COMP-S2-004)
 
-The single-agent, stateless `POST /api/v1/agent/chat` endpoint uses the seven
+The single-agent `POST /api/v1/agent/chat` endpoint uses the seven
 read-only contracts from COMP-S2-001. It has no write tools, arbitrary SQL,
 RAG, web search, handoffs, or external business integrations. Web, mobile and
 WhatsApp can later call the same server service after proper channel auth.
+Without `X-Conversation-Session` it remains stateless. The web bridge derives
+that opaque header from a signed, random, HTTP-only cookie; the browser sends
+only the question. An authenticated channel can opt into process-local context
+using its own server-generated 64-character hex session ID. Business scope is
+set by the server, never by a model or browser parameter.
 
 ## Dependencies and model
 
@@ -14,8 +19,10 @@ configurable through `BUSINESS_AGENT_MODEL`; its API model page documents
 Responses and function calling support:
 https://developers.openai.com/api/docs/models/gpt-5.4-mini
 
-Availability for this account is **not verified**: the optional real-model
-test below has not been authorized or run.
+Availability for this account was verified with the dedicated test key on
+November 25, 2026. The 20-case real-model evaluation found three material
+answer failures; see `docs/business-agent-evaluation.md`. This does not
+authorize operational access.
 
 ## Configuration
 
@@ -49,7 +56,13 @@ Content-Type: application/json
 
 The response includes `answer`, `tools_used`, `periods`, `limitations`,
 `usage` (model calls and tokens), and `duration_ms`. Provider failures return
-generic errors without keys or prompts. No conversation history is persisted.
+generic errors without keys or prompts. At most five previous exchanges are
+kept in process memory for 30 minutes after the last turn. Only the user text,
+final answer and analyzed dates are remembered, never raw tool results. The
+history is limited to 3,000 characters and the store to 128 sessions. Runs in
+one session are serialized. A process restart or multi-worker routing can lose
+context; no persistent memory or shared store is configured. New conversation
+rotates the cookie, so the old context cannot be reused by that browser.
 
 ## Privacy and limits
 
@@ -65,6 +78,8 @@ The run is bounded to at most 4 model turns, 7 tools, 600 output tokens per
 model call, 8,000 total tokens checked after the run, and 25 seconds total.
 There is no retry of model requests. The total-token check is an output gate,
 not a pre-charge guarantee; use account-level quotas before broader access.
+History increases input tokens. A follow-up must requery tools before asserting
+commercial figures, including both periods in a comparison.
 No public exposure is approved. The bearer token is an experimental gate,
 not a replacement for per-user authorization or a distributed rate limiter.
 
@@ -79,3 +94,16 @@ using an empty SQLite database. It requires an explicit authorization, the
 `RUN_BUSINESS_AGENT_LIVE=1` gate, `DATABASE_URL=sqlite://`, the feature flag,
 and a dedicated API key. It checks actual model availability and selection of
 `get_sales_summary` without sending store records.
+
+COMP-S2-004 adds 20 evaluation cases in `tests/data/business_agent_eval.json`,
+scripted checks in `tests/test_business_agent_eval.py`, and an optional guarded
+real-model runner in `tests/manual_business_agent_eval.py`. The owner
+authorized one run of the 20 cases on November 25, 2026. It used only
+synthetic analytics and recorded model, token use, estimated cost, latency,
+tools, periods, answer, limitations and expected facts. The model was
+available, but the first acceptance review failed on E09, E17 and E18. Focused
+corrections and regression tests were followed by one authorized real-model
+reevaluation of the same 20 synthetic cases: 20/20 tool selections and 20/20
+acceptable answers, with no provider or limit errors. See
+`docs/business-agent-evaluation.md` for the comparison and limitations. Do not
+repeat real-model calls without a new authorization.

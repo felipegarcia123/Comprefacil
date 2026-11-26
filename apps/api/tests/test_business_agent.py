@@ -20,6 +20,7 @@ from app.schemas.business_analytics import (AgendaItem, GrossProfit, InventorySu
     StockItem, SupplierObligations, TopProducts)
 from app.services.business_agent import (AgentLimitError, AgentProviderError, TOOLS,
                                          run_business_agent)
+from app.services.business_agent_conversations import AgentConversationStore, MAX_MESSAGES
 
 
 DAY = date(2026, 11, 24)
@@ -160,7 +161,8 @@ def test_no_data_and_uncalculable_profit_are_reported():
     data.profit_state = "insufficient_data"
     model = ScriptedModel([[('get_sales_summary', period_args()),
                             ('get_profit_summary', period_args())], "No hay ganancia confiable."])
-    result = asyncio.run(run_business_agent("Ventas y margen de ese dia", data, model_override=model))
+    result = asyncio.run(run_business_agent("Ventas y margen del 24 de noviembre de 2026", data,
+                                            model_override=model))
     assert len(result.limitations) == 2
     assert "missing_or_unreliable_sale_cost" in result.limitations[1]
     assert "null" in str(model.inputs[-1])
@@ -209,7 +211,8 @@ def test_provider_failure_and_model_turn_limit():
             model_override=ScriptedModel([RuntimeError("provider secret must not leak")])))
     repeating = ScriptedModel([[('get_sales_summary', period_args())] for _ in range(5)])
     with pytest.raises(AgentLimitError):
-        asyncio.run(run_business_agent("Cuanto vendimos?", FakeAnalytics(), model_override=repeating))
+        asyncio.run(run_business_agent("Cuanto vendimos el 24 de noviembre de 2026?",
+                                       FakeAnalytics(), model_override=repeating))
 
 
 def test_tool_count_limit_stops_before_eighth_query():
@@ -266,3 +269,71 @@ def test_only_seven_read_tools_exposed():
     assert {tool.name for tool in TOOLS} == {
         "get_sales_summary", "get_profit_summary", "get_top_products", "get_low_stock_products",
         "get_inventory_summary", "get_supplier_commitments", "get_purchase_agenda"}
+
+
+def test_follow_up_uses_prior_answer_and_requeries_tools():
+    async def scenario():
+        store = AgentConversationStore()
+        first = ScriptedModel([[('get_sales_summary', period_args())], "Ventas: 100."])
+        await store.run("business-a", "a" * 64, "Ventas el 24 de noviembre?", FakeAnalytics(),
+                        model_override=first)
+        second = ScriptedModel([[('get_sales_summary', {"date_from": "2026-11-17",
+                                                       "date_to": "2026-11-17"})],
+                                "El periodo anterior tuvo 100."])
+        result = await store.run("business-a", "a" * 64, "Y el martes anterior?",
+                                 FakeAnalytics(), model_override=second)
+        assert result.tools_used == ["get_sales_summary"]
+        assert second.inputs[0][-3:] == [
+            {"role": "user", "content": "Ventas el 24 de noviembre?"},
+            {"role": "assistant", "content": "Ventas: 100.\nPeriodos consultados: 2026-11-24 a 2026-11-24"},
+            {"role": "user", "content": "Y el martes anterior?"},
+        ]
+    asyncio.run(scenario())
+
+
+def test_sessions_businesses_expiry_and_message_bounds():
+    async def scenario():
+        store = AgentConversationStore()
+        for business, session in [("one", "a"), ("one", "b"), ("two", "a")]:
+            model = ScriptedModel([[('get_sales_summary', period_args())], "Sintetico"])
+            await store.run(business, session, "Ventas hoy?", FakeAnalytics(), model_override=model)
+        assert len(store._sessions) == 3
+        assert all(len(entry.messages) == 2 for entry in store._sessions.values())
+        for index in range(8):
+            model = ScriptedModel([[('get_sales_summary', period_args())], f"Respuesta {index}"])
+            await store.run("one", "a", f"Seguimiento {index}?", FakeAnalytics(), model_override=model)
+        assert len(store._sessions[("one", "a")].messages) == MAX_MESSAGES
+        assert len(store._sessions[("two", "a")].messages) == 2
+        store._sessions[("one", "a")].expires_at = 0
+        fresh = ScriptedModel([[('get_sales_summary', period_args())], "Nueva respuesta"])
+        await store.run("one", "a", "Nueva pregunta?", FakeAnalytics(), model_override=fresh)
+        assert fresh.inputs[0] == [{"role": "user", "content": "Nueva pregunta?"}]
+    asyncio.run(scenario())
+
+
+def test_rejected_turn_does_not_enter_history():
+    async def scenario():
+        store = AgentConversationStore()
+        refused = ScriptedModel(["Hecho"])
+        await store.run("one", "a", "Cierra la caja", FakeAnalytics(), model_override=refused)
+        assert store._sessions[("one", "a")].messages == []
+    asyncio.run(scenario())
+
+
+def test_simultaneous_turns_in_one_session_are_serialized():
+    class SlowModel(ScriptedModel):
+        async def get_response(self, *args, **kwargs):
+            await asyncio.sleep(0.01)
+            return await super().get_response(*args, **kwargs)
+
+    async def scenario():
+        store = AgentConversationStore()
+        first = SlowModel([[('get_sales_summary', period_args())], "Primera respuesta"])
+        second = ScriptedModel([[('get_sales_summary', period_args())], "Segunda respuesta"])
+        await asyncio.gather(
+            store.run("one", "session", "Primera pregunta?", FakeAnalytics(), model_override=first),
+            store.run("one", "session", "Segunda pregunta?", FakeAnalytics(), model_override=second),
+        )
+        assert "Primera respuesta" in str(second.inputs[0])
+        assert len(store._sessions[("one", "session")].messages) == 4
+    asyncio.run(scenario())

@@ -41,6 +41,11 @@ for (const [name, width, height] of [
       await expect(page.getByText("Ventas verificadas: 120 000 pesos.", { exact: false })).toBeVisible();
       await expect(page.getByText("Limitaciones de los datos")).toBeVisible();
       expect(Object.keys(clientBodies[0] as object)).toEqual(["question"]);
+      if (name === "desktop") {
+        await page.getByLabel("Escribe tu pregunta").fill("seguimiento de ese período");
+        await page.getByRole("button", { name: "Enviar pregunta" }).click();
+        await expect(page.getByText("Seguimiento del período anterior con datos sintéticos.")).toBeVisible();
+      }
       await page.screenshot({ path: testInfo.outputPath("answer.png"), fullPage: true });
       if (name === "desktop") {
         await page.getByLabel("Escribe tu pregunta").fill("provocar error");
@@ -48,6 +53,9 @@ for (const [name, width, height] of [
         await expect(page.getByRole("alert").filter({ hasText: "No se pudo completar la consulta" })).toBeVisible();
         await page.getByRole("button", { name: "Nueva conversación" }).click();
         await expect(page.locator(".ai-message")).toHaveCount(0);
+        await page.getByLabel("Escribe tu pregunta").fill("seguimiento de ese período");
+        await page.getByRole("button", { name: "Enviar pregunta" }).click();
+        await expect(page.getByText("Contexto no disponible.")).toBeVisible();
         await page.getByLabel("Escribe tu pregunta").fill("inventario");
         await page.getByRole("button", { name: "Enviar pregunta" }).click();
         await expect(page.getByText("Hay 2 productos con stock bajo", { exact: false })).toBeVisible();

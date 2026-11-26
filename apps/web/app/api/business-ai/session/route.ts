@@ -27,6 +27,22 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
+export function PATCH(request: NextRequest) {
+  const config = aiConfig();
+  if (!config.enabled) return NextResponse.json({ error: "Comprefácil AI no está disponible." }, { status: 404, headers: noStoreHeaders });
+  if (!sameOrigin(request)) return NextResponse.json({ error: "Solicitud no permitida." }, { status: 403, headers: noStoreHeaders });
+  if (!validAiSession(request.cookies.get(AI_COOKIE)?.value, config.sessionSecret)) {
+    return NextResponse.json({ error: "La sesión terminó. Ingresa de nuevo." }, { status: 401, headers: noStoreHeaders });
+  }
+  const response = NextResponse.json({ reset: true }, { headers: noStoreHeaders });
+  response.cookies.set(AI_COOKIE, createAiSession(config.sessionSecret), {
+    httpOnly: true, sameSite: "strict",
+    secure: process.env.NODE_ENV === "production" || request.nextUrl.protocol === "https:",
+    path: "/api/business-ai", maxAge: 60 * 60 * 8,
+  });
+  return response;
+}
+
 export function DELETE(request: NextRequest) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "Solicitud no permitida." }, { status: 403, headers: noStoreHeaders });
   const response = NextResponse.json({ authenticated: false }, { headers: noStoreHeaders });

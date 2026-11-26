@@ -19,6 +19,29 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(120))
 
 
+class BusinessReminder(Base):
+    __tablename__ = "business_reminders"
+    __table_args__ = (
+        UniqueConstraint("business_id", "user_id", "idempotency_key",
+                         name="uq_business_reminders_actor_request"),
+        CheckConstraint("status IN ('PENDING', 'COMPLETED', 'CANCELLED')",
+                        name="ck_business_reminders_status"),
+        Index("ix_business_reminders_pending", "business_id", "user_id", "status", "due_at"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Bogota")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Supplier(Base):
     __tablename__ = "suppliers"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

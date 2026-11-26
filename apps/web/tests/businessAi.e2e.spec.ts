@@ -89,3 +89,52 @@ test("el puente rechaza solicitudes sin sesión y de otro origen", async ({ requ
     headers: { Origin: base }, data: { code: "wrong" },
   })).status()).toBe(401);
 });
+
+for (const [name, width, height] of [["desktop", 1440, 900], ["móvil", 390, 844]] as const) {
+  test(`${name}: centro personal, consulta y confirmación de recordatorios`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+    const page = await context.newPage();
+    try {
+      await page.goto("http://127.0.0.1:3103/business-ai", { waitUntil: "networkidle" });
+      await page.getByLabel("Código de acceso").fill("synthetic-personal-code-merchant-a-32");
+      await page.getByRole("button", { name: "Ingresar" }).click();
+      await expect(page.getByRole("heading", { name: "Alertas y recordatorios" })).toBeVisible();
+      await expect(page.getByText("Stock bajo: arroz")).toBeVisible();
+      const fit = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth }));
+      expect(fit.scroll).toBeLessThanOrEqual(fit.width + 1);
+      await page.getByLabel("Escribe tu pregunta").fill("Recuérdame revisar el pedido de bebidas mañana a las 8 a. m.");
+      await page.getByRole("button", { name: "Enviar pregunta" }).click();
+      await expect(page.getByLabel("¿Qué quieres recordar?")).toHaveValue("revisar el pedido de bebidas");
+      const due = await page.getByLabel("Fecha y hora · Bogotá").inputValue();
+      await page.getByRole("button", { name: "Revisar y crear" }).click();
+      await expect(page.getByRole("dialog", { name: "Crear recordatorio" })).toBeVisible();
+      await page.getByRole("dialog", { name: "Crear recordatorio" }).getByRole("button", { name: "Crear recordatorio" }).click();
+      await expect(page.getByRole("listitem").filter({ hasText: "revisar el pedido de bebidas" })).toBeVisible();
+      await page.getByLabel("Escribe tu pregunta").fill("¿Qué tengo pendiente para mañana?");
+      await page.getByRole("button", { name: "Enviar pregunta" }).click();
+      await expect(page.getByText("Recordatorio: revisar el pedido de bebidas", { exact: false })).toBeVisible();
+      if (name === "desktop") {
+        const other = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+        const otherPage = await other.newPage();
+        try {
+          await otherPage.goto("http://127.0.0.1:3103/business-ai", { waitUntil: "networkidle" });
+          await otherPage.getByLabel("Código de acceso").fill("synthetic-personal-code-merchant-b-32");
+          await otherPage.getByRole("button", { name: "Ingresar" }).click();
+          await expect(otherPage.getByText("No tienes recordatorios pendientes.")).toBeVisible();
+        } finally { await other.close(); }
+      }
+      await page.getByRole("listitem").filter({ hasText: "revisar el pedido de bebidas" }).getByRole("button", { name: "Completar" }).click();
+      await page.getByRole("dialog", { name: "Completar recordatorio" }).getByRole("button", { name: "Completar recordatorio" }).click();
+      await expect(page.getByText("No tienes recordatorios pendientes.")).toBeVisible();
+      if (name === "desktop") {
+        await page.getByLabel("¿Qué quieres recordar?").fill("Llamar al proveedor");
+        await page.getByLabel("Fecha y hora · Bogotá").fill(due);
+        await page.getByRole("button", { name: "Revisar y crear" }).click();
+        await page.getByRole("dialog", { name: "Crear recordatorio" }).getByRole("button", { name: "Crear recordatorio" }).click();
+        await page.getByRole("listitem").filter({ hasText: "Llamar al proveedor" }).getByRole("button", { name: "Cancelar" }).click();
+        await page.getByRole("dialog", { name: "Cancelar recordatorio" }).getByRole("button", { name: "Cancelar recordatorio" }).click();
+        await expect(page.getByText("No tienes recordatorios pendientes.")).toBeVisible();
+      }
+    } finally { await context.close(); }
+  });
+}

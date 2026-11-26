@@ -1,5 +1,8 @@
 # Comprefácil AI: interfaz experimental (COMP-S2-003 / COMP-S2-004)
 
+Las alertas y los recordatorios del COMP-S2-005 se describen en
+[`business-notifications.md`](business-notifications.md).
+
 La ruta `/business-ai` aparece en la barra de módulos y en el menú. Muestra
 consultas rápidas, mensajes de la sesión, estados de carga y error, fuentes
 consultadas, períodos y limitaciones. El navegador solo envía `question`.

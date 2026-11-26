@@ -30,7 +30,7 @@ def require_agent_auth(authorization: str | None = Header(default=None)) -> None
         raise HTTPException(401, "No autorizado", headers={"WWW-Authenticate": "Bearer"})
 
 
-def get_agent_source(_: None = Depends(require_agent_auth)):
+def readonly_analytics_source():
     """Require a distinct PostgreSQL role with no write grants, plus read-only transaction."""
     raw_url = settings.business_agent_database_url
     if not raw_url or raw_url == settings.database_url:
@@ -74,6 +74,10 @@ def get_agent_source(_: None = Depends(require_agent_auth)):
         raise HTTPException(503, "Base de lectura no disponible") from exc
     finally:
         engine.dispose()
+
+
+def get_agent_source(_: None = Depends(require_agent_auth)):
+    yield from readonly_analytics_source()
 
 
 @router.post("/chat", response_model=BusinessAgentResponse)

@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     business_agent_max_output_tokens: int = 600
     business_agent_max_total_tokens: int = 8000
     business_agent_timeout_seconds: int = 25
+    # Separate, opt-in reminder writer. Actor tokens are mapped server-side to
+    # one business and one user; the AI read-only bearer never authorizes writes.
+    business_notifications_enabled: bool = False
+    business_notifications_business_id: str = ""
+    business_notifications_actors_json: str = ""
+    business_notifications_database_url: str = ""
+    business_notifications_action_secret: str = ""
 
     # Alegra electronic invoicing. Disabled by default; credentials live only
     # here (env vars), never hardcoded, never logged, never sent to the client.
